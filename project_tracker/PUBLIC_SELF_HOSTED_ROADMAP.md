@@ -792,6 +792,45 @@ Rationale:
 
 This matches the self-hosted goal and avoids introducing account, billing, tenancy, and compliance complexity.
 
+### 11.5 Board Views Should Follow Workflow Tiers
+
+Decision:
+
+The board should not permanently present every lifecycle status as equal top-level columns. The
+statuses remain important, but they should be grouped into workflow-focused views:
+
+- Prospects / Discovery:
+  - `saved`
+  - `interested`
+- In Progress:
+  - `preparing`
+  - `applied`
+  - `interviewing`
+- Decision / Outcome:
+  - `offer`
+  - `rejected`
+- Archived:
+  - `archived`
+  - Hidden from active workflows by default.
+
+Rationale:
+
+The daily workflow changes by task. Discovery is about triage and deciding whether a captured job
+is worth pursuing. In Progress is about preparing, applying, interviewing, and following up.
+Decision / Outcome is about closing opportunities and recording final results. Archived jobs are
+not an active workflow tier; they should be searchable or restorable but removed from the default
+board.
+
+Implementation guidance:
+
+- Keep the canonical statuses as the durable database values.
+- Add workflow modes such as `prospects`, `in_progress`, `outcomes`, and `all`.
+- Prefer URLs like `/board?workflow=prospects` or `/board?workflow=in_progress`.
+- Default `/board` should eventually open the most useful daily workflow, likely `in_progress`,
+  with a fallback to `prospects` when no active jobs exist.
+- Drag-and-drop should normally stay within the selected workflow view, while an explicit `all`
+  view can remain available for power users or maintenance.
+
 ---
 
 ## 12. Resume Checklist For Future Sessions
