@@ -359,7 +359,7 @@ Tasks:
 - Add quick actions on cards:
   - Add note. Done on job detail pages and timeline API.
   - Mark applied. Done on job detail pages and jobs API.
-  - Schedule interview.
+  - Schedule interview. Done on job detail pages and jobs API.
   - Upload artefact.
   - Archive. Done on job detail pages and jobs API.
 - Add stage-aging indicators:
@@ -830,6 +830,39 @@ Implementation guidance:
   with a fallback to `prospects` when no active jobs exist.
 - Drag-and-drop should normally stay within the selected workflow view, while an explicit `all`
   view can remain available for power users or maintenance.
+
+### 11.6 Interview Scheduling Is Usually An Inbound Outcome
+
+Decision:
+
+The base interview quick action should model the result as "interview scheduled", not as the
+application controlling the scheduling workflow.
+
+Rationale:
+
+In most job searches, the hiring entity, recruiter, or coordinator controls scheduling. The
+applicant is usually responding with availability, preferences, or confirmations. Application
+Tracker should record the scheduled interview outcome first, then later support helper workflows
+for finding and sharing availability.
+
+Implementation guidance:
+
+- Use `interview_events` for the durable scheduled event:
+  - `stage`
+  - `scheduled_at`
+  - `location`
+  - `participants`
+  - `notes`
+  - `outcome`
+- Creating an interview should move the job to `interviewing` when appropriate.
+- Creating an interview should add a timeline event such as `event_type="interview"`.
+- Future availability features should be designed separately from the base scheduled event.
+- Potential future integrations:
+  - applicant-defined availability windows;
+  - acceptable scheduling rules such as outside working hours;
+  - limited calendar integration, likely starting with one provider;
+  - generated availability options to send to a recruiter;
+  - eventual inbound calendar confirmation import.
 
 ---
 

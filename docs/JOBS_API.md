@@ -89,6 +89,26 @@ curl -s \
 This creates or updates the job's application record, moves the job to `applied`, and records
 timeline events. Repeating the request reuses the existing application record.
 
+## Schedule Interview
+
+```bash
+curl -s \
+  -X POST \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "stage":"Recruiter screen",
+    "scheduled_at":"2026-04-12T18:30:00Z",
+    "location":"Video call",
+    "participants":"Recruiter",
+    "notes":"Prepare salary range."
+  }' \
+  http://127.0.0.1:8000/api/jobs/job-uuid/interviews
+```
+
+This records an inbound scheduled interview event, moves the job to `interviewing` when it is in
+an earlier active stage, and records timeline events.
+
 ## Archive Job
 
 ```bash

@@ -17,6 +17,7 @@ The page requires a logged-in browser session and is owner-scoped. Another user'
 - Shows the job timeline, including `stage_change` events recorded from board movement.
 - Adds notes to the timeline.
 - Marks a job applied and creates or updates the application record.
+- Schedules interviews and shows scheduled interview records.
 - Archives a job with an optional timeline note.
 - Links back to `/board`.
 
@@ -49,7 +50,9 @@ http://127.0.0.1:8000/board
 
 7. Use Mark Applied and confirm the page shows an application record and a timeline event.
 
-8. Use Archive and confirm the job is archived with a timeline event.
+8. Schedule an interview and confirm the page shows an interview record and timeline event.
 
-9. Move another job to a different stage on the board, then open the detail page again and confirm the
+9. Use Archive and confirm the job is archived with a timeline event.
+
+10. Move another job to a different stage on the board, then open the detail page again and confirm the
    new `stage_change` event appears in the timeline.

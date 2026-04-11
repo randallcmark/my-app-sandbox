@@ -9,9 +9,11 @@ from app.api.deps import DbSession, get_current_user
 from app.api.ownership import require_owner
 from app.db.models.application import Application
 from app.db.models.communication import Communication
+from app.db.models.interview_event import InterviewEvent
 from app.db.models.job import Job
 from app.db.models.user import User
 from app.services.applications import mark_job_applied
+from app.services.interviews import schedule_interview
 from app.services.jobs import (
     JOB_STATUSES,
     BoardOrderValidationError,
@@ -93,6 +95,26 @@ class ApplicationResponse(BaseModel):
     applied_at: datetime | None
     notes: str | None
     created: bool
+
+
+class ScheduleInterviewRequest(BaseModel):
+    stage: str = Field(max_length=100)
+    scheduled_at: datetime | None = None
+    location: str | None = Field(default=None, max_length=300)
+    participants: str | None = Field(default=None, max_length=500)
+    notes: str | None = None
+
+
+class InterviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    uuid: str
+    stage: str
+    scheduled_at: datetime | None
+    location: str | None
+    participants: str | None
+    notes: str | None
+    outcome: str | None
 
 
 def _validate_status(job_status: str | None) -> None:
@@ -240,6 +262,39 @@ def mark_job_applied_route(
         response.status_code = status.HTTP_200_OK
     application.created = created
     return application
+
+
+@router.post(
+    "/{job_uuid}/interviews",
+    response_model=InterviewResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def schedule_interview_route(
+    job_uuid: str,
+    payload: ScheduleInterviewRequest,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> InterviewEvent:
+    interview_stage = payload.stage.strip()
+    if not interview_stage:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Interview stage is required")
+
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    old_status = job.status
+    interview, _ = schedule_interview(
+        db,
+        job,
+        stage=interview_stage,
+        scheduled_at=payload.scheduled_at,
+        location=payload.location,
+        participants=payload.participants,
+        notes=payload.notes,
+    )
+    if job.status in {"saved", "interested", "preparing", "applied"}:
+        update_job_board_state(job, status="interviewing")
+        record_job_status_change(db, job, old_status=old_status, new_status=job.status)
+    db.commit()
+    return interview
 
 
 @router.post("/{job_uuid}/archive", response_model=JobResponse)

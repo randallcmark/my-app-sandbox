@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.auth.users import create_local_user
 from app.db.models.application import Application
 from app.db.models.communication import Communication
+from app.db.models.interview_event import InterviewEvent
 from app.db.models.job import Job
 from app.main import app
 from tests.test_local_auth_routes import build_client
@@ -528,6 +529,84 @@ def test_archive_job_hides_cross_user_job(tmp_path: Path, monkeypatch) -> None:
         login(client, "jobseeker@example.com")
 
         response = client.post(f"/api/jobs/{other_job_uuid}/archive", json={})
+
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_schedule_interview_creates_event_moves_job_and_journals(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        job_uuid = create_user_with_jobs(session_local, email="jobseeker@example.com")[0]
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/api/jobs/{job_uuid}/interviews",
+            json={
+                "stage": "Recruiter screen",
+                "scheduled_at": "2026-04-12T18:30:00Z",
+                "location": "Video call",
+                "participants": "Recruiter",
+                "notes": "Prepare salary range.",
+            },
+        )
+
+        assert response.status_code == 201
+        assert response.json()["stage"] == "Recruiter screen"
+        assert response.json()["location"] == "Video call"
+
+        with session_local() as db:
+            job = db.scalar(select(Job).where(Job.uuid == job_uuid))
+            interview = db.scalar(select(InterviewEvent))
+            event_subjects = [
+                event.subject
+                for event in db.scalars(
+                    select(Communication).order_by(Communication.subject)
+                ).all()
+            ]
+
+            assert job is not None
+            assert job.status == "interviewing"
+            assert interview is not None
+            assert interview.stage == "Recruiter screen"
+            assert interview.notes == "Prepare salary range."
+            assert event_subjects == [
+                "Interview scheduled: Recruiter screen",
+                "Status changed from saved to interviewing",
+            ]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_schedule_interview_requires_stage(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        job_uuid = create_user_with_jobs(session_local, email="jobseeker@example.com")[0]
+        login(client, "jobseeker@example.com")
+
+        response = client.post(f"/api/jobs/{job_uuid}/interviews", json={"stage": "   "})
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Interview stage is required"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_schedule_interview_hides_cross_user_job(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        other_job_uuid = create_user_with_jobs(session_local, email="other@example.com")[0]
+        create_user_with_jobs(session_local, email="jobseeker@example.com")
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/api/jobs/{other_job_uuid}/interviews",
+            json={"stage": "Recruiter screen"},
+        )
 
         assert response.status_code == 404
     finally:

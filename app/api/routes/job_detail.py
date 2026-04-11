@@ -10,9 +10,11 @@ from app.api.deps import DbSession, get_current_user
 from app.api.ownership import require_owner
 from app.db.models.application import Application
 from app.db.models.communication import Communication
+from app.db.models.interview_event import InterviewEvent
 from app.db.models.job import Job
 from app.db.models.user import User
 from app.services.applications import mark_job_applied
+from app.services.interviews import schedule_interview
 from app.services.jobs import (
     create_job_note,
     get_user_job_by_uuid,
@@ -114,6 +116,34 @@ def _archive_form(job: Job) -> str:
     """
 
 
+def _schedule_interview_form(job: Job) -> str:
+    return f"""
+    <form class="quick-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/interviews">
+      <label>
+        Stage
+        <input name="stage" placeholder="Recruiter screen" maxlength="100" required>
+      </label>
+      <label>
+        Scheduled time
+        <input name="scheduled_at" type="datetime-local">
+      </label>
+      <label>
+        Location
+        <input name="location" placeholder="Video call, phone, office" maxlength="300">
+      </label>
+      <label>
+        Participants
+        <input name="participants" placeholder="Recruiter, hiring manager" maxlength="500">
+      </label>
+      <label>
+        Notes
+        <textarea name="notes" rows="4" placeholder="Preparation notes or scheduling context"></textarea>
+      </label>
+      <button type="submit">Schedule interview</button>
+    </form>
+    """
+
+
 def _application(application: Application) -> str:
     return f"""
     <li>
@@ -129,6 +159,25 @@ def _applications(applications: list[Application]) -> str:
     if not applications:
         return '<p class="empty">No application record yet.</p>'
     items = "\n".join(_application(application) for application in applications)
+    return f"<ol>{items}</ol>"
+
+
+def _interview(interview: InterviewEvent) -> str:
+    return f"""
+    <li>
+      <strong>{escape(interview.stage)}</strong>
+      <p>Scheduled: {escape(_value(interview.scheduled_at))}</p>
+      <p>Location: {escape(_value(interview.location))}</p>
+      <p>Participants: {escape(_value(interview.participants))}</p>
+      {f'<p>{escape(interview.notes)}</p>' if interview.notes else ""}
+    </li>
+    """
+
+
+def _interviews(interviews: list[InterviewEvent]) -> str:
+    if not interviews:
+        return '<p class="empty">No interviews scheduled yet.</p>'
+    items = "\n".join(_interview(interview) for interview in interviews)
     return f"<ol>{items}</ol>"
 
 
@@ -401,6 +450,14 @@ def render_job_detail(job: Job) -> str:
           {_applications(job.applications)}
         </section>
         <section>
+          <h2>Interviews</h2>
+          {_interviews(job.interviews)}
+        </section>
+        <section>
+          <h2>Schedule Interview</h2>
+          {_schedule_interview_form(job)}
+        </section>
+        <section>
           <h2>Mark Applied</h2>
           {_mark_applied_form(job)}
         </section>
@@ -474,6 +531,43 @@ def mark_job_applied_form(
     )
     update_job_board_state(job, status="applied")
     record_job_status_change(db, job, old_status=old_status, new_status=job.status)
+    db.commit()
+    return RedirectResponse(url=f"/jobs/{job.uuid}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/jobs/{job_uuid}/interviews", include_in_schema=False)
+def schedule_interview_form(
+    job_uuid: str,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+    stage: Annotated[str, Form()] = "",
+    scheduled_at: Annotated[str, Form()] = "",
+    location: Annotated[str, Form()] = "",
+    participants: Annotated[str, Form()] = "",
+    notes: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    interview_stage = stage.strip()
+    if not interview_stage:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Interview stage is required")
+
+    parsed_scheduled_at = None
+    if scheduled_at.strip():
+        parsed_scheduled_at = datetime.fromisoformat(scheduled_at.strip())
+
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    old_status = job.status
+    schedule_interview(
+        db,
+        job,
+        stage=interview_stage,
+        scheduled_at=parsed_scheduled_at,
+        location=location.strip() or None,
+        participants=participants.strip() or None,
+        notes=notes.strip() or None,
+    )
+    if job.status in {"saved", "interested", "preparing", "applied"}:
+        update_job_board_state(job, status="interviewing")
+        record_job_status_change(db, job, old_status=old_status, new_status=job.status)
     db.commit()
     return RedirectResponse(url=f"/jobs/{job.uuid}", status_code=status.HTTP_303_SEE_OTHER)
 
