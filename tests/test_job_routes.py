@@ -60,7 +60,7 @@ def test_list_jobs_returns_current_users_non_archived_jobs(
 
         assert response.status_code == 200
         titles = [job["title"] for job in response.json()]
-        assert titles == ["Applied role", "Saved role"]
+        assert titles == ["Saved role", "Applied role"]
     finally:
         app.dependency_overrides.clear()
 

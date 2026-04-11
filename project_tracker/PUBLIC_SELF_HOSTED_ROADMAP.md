@@ -349,8 +349,9 @@ The user interface should support rapid daily job-search triage. Dragging cards 
 
 Tasks:
 
-- Make the board the primary landing page after login.
+- Make the board the primary landing page after login. Done for logged-in root redirects.
 - Add owner-scoped jobs API for board reads and updates. Done.
+- Add first server-rendered board view. Done.
 - Implement drag-and-drop stage changes.
 - Persist card order within each column. Started with `PATCH /api/jobs/{job_uuid}/board`.
 - Add optimistic UI updates with clear failure rollback.

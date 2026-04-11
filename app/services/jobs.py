@@ -17,6 +17,9 @@ JOB_STATUSES = (
     "archived",
 )
 
+BOARD_STATUSES = tuple(status for status in JOB_STATUSES if status != "archived")
+_STATUS_ORDER = {status: index for index, status in enumerate(JOB_STATUSES)}
+
 
 def list_user_jobs(
     db: Session,
@@ -31,8 +34,9 @@ def list_user_jobs(
     elif not include_archived:
         statement = statement.where(Job.status != "archived")
 
-    statement = statement.order_by(Job.status, Job.board_position, Job.created_at)
-    return list(db.scalars(statement).all())
+    statement = statement.order_by(Job.board_position, Job.created_at)
+    jobs = list(db.scalars(statement).all())
+    return sorted(jobs, key=lambda job: (_STATUS_ORDER.get(job.status, len(_STATUS_ORDER)), job.board_position))
 
 
 def get_user_job_by_uuid(db: Session, user: User, job_uuid: str) -> Job | None:

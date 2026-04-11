@@ -33,6 +33,10 @@ Jobs API examples live in:
 
 - `docs/JOBS_API.md`
 
+Kanban board notes live in:
+
+- `docs/KANBAN_BOARD.md`
+
 ## Current State
 
 This clean repo currently contains the minimal application skeleton:
