@@ -357,7 +357,7 @@ Tasks:
 - Persist card order within each column. Done with `PATCH /api/jobs/board`.
 - Add optimistic UI updates with clear failure rollback.
 - Add quick actions on cards:
-  - Add note.
+  - Add note. Done on job detail pages and timeline API.
   - Mark applied.
   - Schedule interview.
   - Upload artefact.

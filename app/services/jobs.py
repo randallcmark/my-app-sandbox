@@ -97,6 +97,28 @@ def record_job_status_change(
     return event
 
 
+def create_job_note(
+    db: Session,
+    job: Job,
+    *,
+    subject: str,
+    notes: str,
+    occurred_at: datetime | None = None,
+) -> Communication:
+    event = Communication(
+        job_id=job.id,
+        owner_user_id=job.owner_user_id,
+        event_type="note",
+        direction="internal",
+        occurred_at=occurred_at or datetime.now(UTC),
+        subject=subject.strip(),
+        notes=notes.strip(),
+    )
+    db.add(event)
+    db.flush()
+    return event
+
+
 class BoardOrderValidationError(ValueError):
     pass
 

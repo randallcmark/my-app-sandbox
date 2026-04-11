@@ -3,15 +3,15 @@ from decimal import Decimal
 from html import escape
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.api.deps import DbSession, get_current_user
 from app.api.ownership import require_owner
 from app.db.models.communication import Communication
 from app.db.models.job import Job
 from app.db.models.user import User
-from app.services.jobs import get_user_job_by_uuid
+from app.services.jobs import create_job_note, get_user_job_by_uuid
 
 router = APIRouter(tags=["job-detail"])
 
@@ -59,6 +59,22 @@ def _timeline(events: list[Communication]) -> str:
         return '<p class="empty">No timeline events yet.</p>'
     items = "\n".join(_timeline_event(event) for event in events)
     return f"<ol>{items}</ol>"
+
+
+def _note_form(job: Job) -> str:
+    return f"""
+    <form class="note-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/notes">
+      <label>
+        Subject
+        <input name="subject" value="Note" maxlength="300">
+      </label>
+      <label>
+        Note
+        <textarea name="notes" rows="5" required></textarea>
+      </label>
+      <button type="submit">Add note</button>
+    </form>
+    """
 
 
 def render_job_detail(job: Job) -> str:
@@ -160,6 +176,30 @@ def render_job_detail(job: Job) -> str:
       font-weight: 700;
       min-height: 38px;
       padding: 0 14px;
+    }}
+
+    input,
+    textarea {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      padding: 8px 10px;
+      width: 100%;
+    }}
+
+    textarea {{
+      resize: vertical;
+    }}
+
+    label {{
+      display: grid;
+      font-weight: 700;
+      gap: 6px;
+    }}
+
+    .note-form {{
+      display: grid;
+      gap: 12px;
     }}
 
     button:hover {{
@@ -301,6 +341,10 @@ def render_job_detail(job: Job) -> str:
           </dl>
         </section>
         <section>
+          <h2>Add Note</h2>
+          {_note_form(job)}
+        </section>
+        <section>
           <h2>Timeline</h2>
           {_timeline(events)}
         </section>
@@ -319,3 +363,26 @@ def job_detail(
 ) -> HTMLResponse:
     job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
     return HTMLResponse(render_job_detail(job))
+
+
+@router.post("/jobs/{job_uuid}/notes", include_in_schema=False)
+def create_job_note_form(
+    job_uuid: str,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+    subject: Annotated[str, Form()] = "Note",
+    notes: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    note_text = notes.strip()
+    if not note_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Note text is required")
+
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    create_job_note(
+        db,
+        job,
+        subject=subject.strip() or "Note",
+        notes=note_text,
+    )
+    db.commit()
+    return RedirectResponse(url=f"/jobs/{job.uuid}", status_code=status.HTTP_303_SEE_OTHER)

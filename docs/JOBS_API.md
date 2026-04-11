@@ -62,6 +62,19 @@ curl -s \
 Status changes are recorded as `stage_change` events. Timeline entries are owner-scoped with
 the job.
 
+## Add A Timeline Note
+
+```bash
+curl -s \
+  -X POST \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"subject":"Recruiter call","notes":"Follow up next week."}' \
+  http://127.0.0.1:8000/api/jobs/job-uuid/timeline
+```
+
+Notes are stored as `note` events in the same timeline.
+
 ## Update Board State
 
 Use this endpoint for kanban stage changes and card ordering:

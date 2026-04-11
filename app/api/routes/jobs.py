@@ -13,6 +13,7 @@ from app.db.models.user import User
 from app.services.jobs import (
     JOB_STATUSES,
     BoardOrderValidationError,
+    create_job_note,
     get_user_job_by_uuid,
     list_user_jobs,
     record_job_status_change,
@@ -62,6 +63,12 @@ class JobTimelineEventResponse(BaseModel):
     occurred_at: datetime | None
     subject: str | None
     notes: str | None
+
+
+class JobTimelineCreateRequest(BaseModel):
+    subject: str = Field(default="Note", max_length=300)
+    notes: str
+    occurred_at: datetime | None = None
 
 
 def _validate_status(job_status: str | None) -> None:
@@ -124,6 +131,34 @@ def get_job_timeline(
         job.communications,
         key=lambda event: event.occurred_at or event.created_at,
     )
+
+
+@router.post(
+    "/{job_uuid}/timeline",
+    response_model=JobTimelineEventResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_job_timeline_event(
+    job_uuid: str,
+    payload: JobTimelineCreateRequest,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> Communication:
+    subject = payload.subject.strip() or "Note"
+    notes = payload.notes.strip()
+    if not notes:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Note text is required")
+
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    event = create_job_note(
+        db,
+        job,
+        subject=subject,
+        notes=notes,
+        occurred_at=payload.occurred_at,
+    )
+    db.commit()
+    return event
 
 
 @router.patch("/{job_uuid}/board", response_model=JobResponse)

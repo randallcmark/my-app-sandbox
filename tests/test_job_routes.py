@@ -310,6 +310,64 @@ def test_job_timeline_lists_stage_change_events(tmp_path: Path, monkeypatch) -> 
         app.dependency_overrides.clear()
 
 
+def test_create_job_timeline_note_adds_owned_note(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        job_uuid = create_user_with_jobs(session_local, email="jobseeker@example.com")[0]
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/api/jobs/{job_uuid}/timeline",
+            json={"subject": "Recruiter call", "notes": "Follow up next week."},
+        )
+
+        assert response.status_code == 201
+        assert response.json()["event_type"] == "note"
+        assert response.json()["subject"] == "Recruiter call"
+        assert response.json()["notes"] == "Follow up next week."
+
+        timeline_response = client.get(f"/api/jobs/{job_uuid}/timeline")
+
+        assert timeline_response.status_code == 200
+        assert timeline_response.json()[0]["event_type"] == "note"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_create_job_timeline_note_rejects_blank_note(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        job_uuid = create_user_with_jobs(session_local, email="jobseeker@example.com")[0]
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/api/jobs/{job_uuid}/timeline",
+            json={"subject": "Empty", "notes": "   "},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Note text is required"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_create_job_timeline_note_hides_cross_user_job(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        other_job_uuid = create_user_with_jobs(session_local, email="other@example.com")[0]
+        create_user_with_jobs(session_local, email="jobseeker@example.com")
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/api/jobs/{other_job_uuid}/timeline",
+            json={"subject": "Nope", "notes": "Cannot see this."},
+        )
+
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_job_timeline_hides_cross_user_job(tmp_path: Path, monkeypatch) -> None:
     client, session_local = build_client(tmp_path, monkeypatch)
     try:
