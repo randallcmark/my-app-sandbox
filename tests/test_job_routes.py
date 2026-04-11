@@ -152,3 +152,98 @@ def test_update_job_board_rejects_unknown_status(tmp_path: Path, monkeypatch) ->
         assert "Unsupported job status" in response.json()["detail"]
     finally:
         app.dependency_overrides.clear()
+
+
+def test_bulk_board_update_persists_statuses_and_positions(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        saved_uuid, applied_uuid, _ = create_user_with_jobs(
+            session_local,
+            email="jobseeker@example.com",
+        )
+        login(client, "jobseeker@example.com")
+
+        response = client.patch(
+            "/api/jobs/board",
+            json={
+                "columns": {
+                    "saved": [applied_uuid],
+                    "interested": [],
+                    "preparing": [],
+                    "applied": [saved_uuid],
+                    "interviewing": [],
+                    "offer": [],
+                    "rejected": [],
+                }
+            },
+        )
+
+        assert response.status_code == 200
+
+        with session_local() as db:
+            saved_job = db.scalar(select(Job).where(Job.uuid == saved_uuid))
+            applied_job = db.scalar(select(Job).where(Job.uuid == applied_uuid))
+
+            assert saved_job is not None
+            assert applied_job is not None
+            assert saved_job.status == "applied"
+            assert saved_job.board_position == 0
+            assert applied_job.status == "saved"
+            assert applied_job.board_position == 0
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_bulk_board_update_rejects_cross_user_job(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        other_uuid = create_user_with_jobs(session_local, email="other@example.com")[0]
+        create_user_with_jobs(session_local, email="jobseeker@example.com")
+        login(client, "jobseeker@example.com")
+
+        response = client.patch(
+            "/api/jobs/board",
+            json={
+                "columns": {
+                    "saved": [other_uuid],
+                    "interested": [],
+                    "preparing": [],
+                    "applied": [],
+                    "interviewing": [],
+                    "offer": [],
+                    "rejected": [],
+                }
+            },
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Board update contains unknown jobs"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_bulk_board_update_rejects_duplicate_job_uuid(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        job_uuid = create_user_with_jobs(session_local, email="jobseeker@example.com")[0]
+        login(client, "jobseeker@example.com")
+
+        response = client.patch(
+            "/api/jobs/board",
+            json={
+                "columns": {
+                    "saved": [job_uuid],
+                    "interested": [job_uuid],
+                    "preparing": [],
+                    "applied": [],
+                    "interviewing": [],
+                    "offer": [],
+                    "rejected": [],
+                }
+            },
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "A job can appear only once in a board update"
+    finally:
+        app.dependency_overrides.clear()

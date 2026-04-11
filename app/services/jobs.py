@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from collections.abc import Mapping, Sequence
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -36,7 +38,10 @@ def list_user_jobs(
 
     statement = statement.order_by(Job.board_position, Job.created_at)
     jobs = list(db.scalars(statement).all())
-    return sorted(jobs, key=lambda job: (_STATUS_ORDER.get(job.status, len(_STATUS_ORDER)), job.board_position))
+    return sorted(
+        jobs,
+        key=lambda job: (_STATUS_ORDER.get(job.status, len(_STATUS_ORDER)), job.board_position),
+    )
 
 
 def get_user_job_by_uuid(db: Session, user: User, job_uuid: str) -> Job | None:
@@ -65,3 +70,48 @@ def update_job_board_state(
         job.board_position = board_position
 
     return job
+
+
+class BoardOrderValidationError(ValueError):
+    pass
+
+
+def update_user_board_order(
+    db: Session,
+    user: User,
+    columns: Mapping[str, Sequence[str]],
+) -> list[Job]:
+    unknown_statuses = set(columns) - set(BOARD_STATUSES)
+    if unknown_statuses:
+        unknown = ", ".join(sorted(unknown_statuses))
+        raise BoardOrderValidationError(f"Unsupported board status: {unknown}")
+
+    requested_uuids = [job_uuid for job_uuids in columns.values() for job_uuid in job_uuids]
+    if len(requested_uuids) != len(set(requested_uuids)):
+        raise BoardOrderValidationError("A job can appear only once in a board update")
+
+    if not requested_uuids:
+        return []
+
+    jobs = list(
+        db.scalars(
+            select(Job).where(
+                Job.owner_user_id == user.id,
+                Job.uuid.in_(requested_uuids),
+            )
+        ).all()
+    )
+    jobs_by_uuid = {job.uuid: job for job in jobs}
+    missing_uuids = set(requested_uuids) - set(jobs_by_uuid)
+    if missing_uuids:
+        raise BoardOrderValidationError("Board update contains unknown jobs")
+
+    updated_jobs = []
+    for job_status, job_uuids in columns.items():
+        for position, job_uuid in enumerate(job_uuids):
+            job = jobs_by_uuid[job_uuid]
+            update_job_board_state(job, status=job_status, board_position=position)
+            updated_jobs.append(job)
+
+    db.flush()
+    return updated_jobs

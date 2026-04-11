@@ -23,9 +23,10 @@ anonymous users are sent to `/login`.
   - `rejected`
 - Provides previous/next buttons and a status dropdown on each card.
 - Persists stage changes with `PATCH /api/jobs/{job_uuid}/board`.
+- Supports dragging cards within and across columns.
+- Persists drag-and-drop ordering with `PATCH /api/jobs/board`.
 
-Drag-and-drop ordering is still planned. The current controls are the accessible fallback that
-the drag-and-drop behavior can build on.
+The buttons and dropdown remain available as the keyboard-friendly fallback.
 
 ## Browser Test
 
@@ -49,7 +50,7 @@ http://127.0.0.1:8000/login
 
 5. Confirm the captured job appears in `Saved`.
 
-6. Use the card controls to move it to another stage.
+6. Drag the card to another stage, or use the card controls.
 
 7. Refresh the page and confirm the job remains in the new stage.
 

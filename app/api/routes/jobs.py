@@ -9,7 +9,14 @@ from app.api.deps import DbSession, get_current_user
 from app.api.ownership import require_owner
 from app.db.models.job import Job
 from app.db.models.user import User
-from app.services.jobs import JOB_STATUSES, get_user_job_by_uuid, list_user_jobs, update_job_board_state
+from app.services.jobs import (
+    JOB_STATUSES,
+    BoardOrderValidationError,
+    get_user_job_by_uuid,
+    list_user_jobs,
+    update_job_board_state,
+    update_user_board_order,
+)
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -40,6 +47,10 @@ class JobBoardUpdateRequest(BaseModel):
     board_position: int | None = Field(default=None, ge=0)
 
 
+class JobBoardOrderRequest(BaseModel):
+    columns: dict[str, list[str]]
+
+
 def _validate_status(job_status: str | None) -> None:
     if job_status is not None and job_status not in JOB_STATUSES:
         allowed = ", ".join(JOB_STATUSES)
@@ -63,6 +74,21 @@ def list_jobs(
         include_archived=include_archived,
         status=job_status,
     )
+
+
+@router.patch("/board", response_model=list[JobResponse])
+def update_board_order(
+    payload: JobBoardOrderRequest,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[Job]:
+    try:
+        jobs = update_user_board_order(db, current_user, payload.columns)
+    except BoardOrderValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    db.commit()
+    return jobs
 
 
 @router.get("/{job_uuid}", response_model=JobResponse)

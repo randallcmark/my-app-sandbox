@@ -43,7 +43,7 @@ def _job_card(job: Job) -> str:
         )
 
     return f"""
-    <article class="job-card" data-job-uuid="{escape(job.uuid)}">
+    <article class="job-card" data-job-uuid="{escape(job.uuid)}" draggable="true">
       <div>
         <h3>{escape(job.title)}</h3>
         {company}
@@ -73,7 +73,7 @@ def _column(status: str, jobs: Iterable[Job]) -> str:
       <header>
         <h2>{escape(label)}</h2>
       </header>
-      <div class="column-body">
+      <div class="column-body" data-drop-zone="true">
         {cards}
         {empty}
       </div>
@@ -202,9 +202,19 @@ def render_board(user: User, jobs: list[Job]) -> str:
       border: 1px solid var(--line);
       border-left: 4px solid var(--accent);
       border-radius: 8px;
+      cursor: grab;
       display: grid;
       gap: 12px;
       padding: 12px;
+    }}
+
+    .job-card.dragging {{
+      opacity: 0.55;
+    }}
+
+    .board-column.drag-over {{
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 2px var(--accent);
     }}
 
     .job-card h3 {{
@@ -334,6 +344,25 @@ def render_board(user: User, jobs: list[Job]) -> str:
       }}
     }}
 
+    async function updateBoardOrder() {{
+      const columns = {{}};
+      document.querySelectorAll(".board-column").forEach((column) => {{
+        columns[column.dataset.status] = Array.from(column.querySelectorAll(".job-card"))
+          .map((card) => card.dataset.jobUuid);
+      }});
+
+      const response = await fetch("/api/jobs/board", {{
+        method: "PATCH",
+        headers: {{"Content-Type": "application/json"}},
+        body: JSON.stringify({{columns}})
+      }});
+
+      if (!response.ok) {{
+        const body = await response.json().catch(() => ({{detail: "Board update failed"}}));
+        throw new Error(body.detail || "Board update failed");
+      }}
+    }}
+
     function nextStatus(current, direction) {{
       const index = statuses.indexOf(current);
       const nextIndex = index + direction;
@@ -382,6 +411,82 @@ def render_board(user: User, jobs: list[Job]) -> str:
         notice.textContent = error.message;
       }}
     }});
+
+    let draggedCard = null;
+
+    document.addEventListener("dragstart", (event) => {{
+      const card = event.target.closest(".job-card");
+      if (!card) {{
+        return;
+      }}
+
+      draggedCard = card;
+      card.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", card.dataset.jobUuid);
+    }});
+
+    document.addEventListener("dragend", (event) => {{
+      const card = event.target.closest(".job-card");
+      if (card) {{
+        card.classList.remove("dragging");
+      }}
+      document.querySelectorAll(".board-column.drag-over").forEach((column) => {{
+        column.classList.remove("drag-over");
+      }});
+      draggedCard = null;
+    }});
+
+    document.querySelectorAll(".board-column").forEach((column) => {{
+      column.addEventListener("dragover", (event) => {{
+        if (!draggedCard) {{
+          return;
+        }}
+
+        event.preventDefault();
+        column.classList.add("drag-over");
+        const body = column.querySelector(".column-body");
+        const afterElement = getDragAfterElement(body, event.clientY);
+        if (afterElement === null) {{
+          body.appendChild(draggedCard);
+        }} else {{
+          body.insertBefore(draggedCard, afterElement);
+        }}
+      }});
+
+      column.addEventListener("dragleave", () => {{
+        column.classList.remove("drag-over");
+      }});
+
+      column.addEventListener("drop", async (event) => {{
+        event.preventDefault();
+        column.classList.remove("drag-over");
+        if (!draggedCard) {{
+          return;
+        }}
+
+        notice.textContent = "";
+        try {{
+          await updateBoardOrder();
+          window.location.reload();
+        }} catch (error) {{
+          notice.textContent = error.message;
+          window.location.reload();
+        }}
+      }});
+    }});
+
+    function getDragAfterElement(container, y) {{
+      const cards = [...container.querySelectorAll(".job-card:not(.dragging)")];
+      return cards.reduce((closest, child) => {{
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {{
+          return {{offset, element: child}};
+        }}
+        return closest;
+      }}, {{offset: Number.NEGATIVE_INFINITY, element: null}}).element;
+    }}
   </script>
 </body>
 </html>"""

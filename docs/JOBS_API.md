@@ -66,3 +66,29 @@ curl -s \
 
 Moving a job to `archived` sets `archived_at`. Moving it back to another status clears
 `archived_at`.
+
+## Update Full Board Order
+
+Use this endpoint after dragging cards between columns. Every UUID must belong to the logged-in
+user, and a UUID may appear only once.
+
+```bash
+curl -s \
+  -X PATCH \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{
+    "columns": {
+      "saved": ["saved-job-uuid"],
+      "interested": [],
+      "preparing": [],
+      "applied": ["applied-job-uuid"],
+      "interviewing": [],
+      "offer": [],
+      "rejected": []
+    }
+  }' \
+  http://127.0.0.1:8000/api/jobs/board
+```
+
+The array order in each column becomes the stored `board_position`.

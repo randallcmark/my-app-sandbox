@@ -352,8 +352,8 @@ Tasks:
 - Make the board the primary landing page after login. Done for logged-in root redirects.
 - Add owner-scoped jobs API for board reads and updates. Done.
 - Add first server-rendered board view. Done.
-- Implement drag-and-drop stage changes.
-- Persist card order within each column. Started with `PATCH /api/jobs/{job_uuid}/board`.
+- Implement drag-and-drop stage changes. Done.
+- Persist card order within each column. Done with `PATCH /api/jobs/board`.
 - Add optimistic UI updates with clear failure rollback.
 - Add quick actions on cards:
   - Add note.
