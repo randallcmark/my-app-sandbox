@@ -218,7 +218,7 @@ Notes:
 
 ## Stage 0: Repository Hygiene And Baseline
 
-Status: Planned
+Status: In progress
 
 Goal: make the repo safe to publish and easy to resume.
 
@@ -262,9 +262,9 @@ Job search data accumulates over weeks or months. Users need reliable upgrades, 
 
 Tasks:
 
-- Add Alembic migrations.
-- Generate a baseline migration from the current SQLAlchemy models.
-- Replace unconditional startup `create_all` with explicit dev/test behavior.
+- Add Alembic migrations. Done in clean rebuild.
+- Generate a baseline migration from the current SQLAlchemy models. Done for the initial clean schema.
+- Replace unconditional startup `create_all` with explicit dev/test behavior. Done by starting the clean repo without startup table creation.
 - Align ORM models, Pydantic schemas, UI forms, and docs.
 - Choose canonical timestamp names for applications and communications.
 - Choose canonical relationship semantics for interviews:
@@ -808,4 +808,3 @@ Suggested first prompt:
 ```text
 Read project_tracker/PUBLIC_SELF_HOSTED_ROADMAP.md, inspect the current repo state, and continue the next unchecked Stage 0/1 task without touching unrelated files.
 ```
-

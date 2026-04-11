@@ -1,4 +1,4 @@
-.PHONY: check lint run test
+.PHONY: check lint migrate run test
 
 PYTHON ?= .venv/bin/python
 UVICORN ?= .venv/bin/uvicorn
@@ -11,6 +11,8 @@ lint:
 
 check: lint test
 
+migrate:
+	.venv/bin/alembic upgrade head
+
 run:
 	$(UVICORN) app.main:app --reload
-

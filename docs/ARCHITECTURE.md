@@ -18,6 +18,8 @@ FastAPI application
 SQL database + artefact storage
 ```
 
+The database schema is managed by Alembic from the start. Runtime startup should not call `Base.metadata.create_all`; fresh installs and upgrades should run migrations explicitly.
+
 Default local deployment:
 
 - SQLite database in a persistent Docker volume.
@@ -30,4 +32,3 @@ Optional later deployment:
 - Reverse proxy auth or local session auth.
 
 The detailed staged plan is in `project_tracker/PUBLIC_SELF_HOSTED_ROADMAP.md`.
-

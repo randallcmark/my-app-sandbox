@@ -26,3 +26,14 @@ Rationale:
 - Docker Compose deployment should remain simple.
 - Server-rendered pages plus focused JavaScript are enough for the initial kanban workflow.
 
+## 2026-04-11: Alembic From The First Schema
+
+The rebuild starts with Alembic migrations instead of app-startup `create_all`.
+
+Rationale:
+
+- Job-search history becomes valuable user data quickly.
+- Public self-hosted users need a documented upgrade path.
+- Schema drift was one of the main issues in the original MVP.
+
+The baseline schema includes users, API tokens, jobs, applications, interviews, communications, and artefacts.

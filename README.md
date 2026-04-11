@@ -67,6 +67,12 @@ Run all local checks:
 make check
 ```
 
+Apply database migrations:
+
+```bash
+make migrate
+```
+
 ## Docker
 
 Build and run locally:

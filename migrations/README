@@ -1,0 +1,6 @@
+Alembic migrations for Application Tracker.
+
+Run migrations with:
+
+    alembic upgrade head
+
