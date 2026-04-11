@@ -52,7 +52,13 @@ python -m pip install -e ".[dev]"
 Run the API:
 
 ```bash
-uvicorn app.main:app --reload
+make run
+```
+
+If you prefer to call Uvicorn directly, use the virtualenv binary:
+
+```bash
+.venv/bin/uvicorn app.main:app --reload
 ```
 
 Run tests:
@@ -65,6 +71,23 @@ Run all local checks:
 
 ```bash
 make check
+```
+
+### Rebuild A Broken Virtualenv
+
+If imports fail with an `incompatible architecture` error from `pydantic_core`, the virtualenv
+contains binary wheels from a different Mac CPU architecture. Recreate it from scratch; running
+`python -m venv .venv` over an existing environment does not remove old packages.
+
+```bash
+deactivate 2>/dev/null || true
+rm -rf .venv
+python3 -c "import platform; print(platform.machine())"
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install --no-cache-dir -e ".[dev]"
+make run
 ```
 
 Apply database migrations:
