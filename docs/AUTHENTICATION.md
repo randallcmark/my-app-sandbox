@@ -240,7 +240,7 @@ Status: Done
 Status: Done
 
 - Add first-run admin bootstrap command. Done.
-- Add local login/logout routes. Done for JSON endpoints.
+- Add local login/logout routes. Done for JSON and browser form endpoints.
 - Add current-user dependency. Done.
 - Add secure session cookie issue/clear behavior. Done.
 - Add admin/user role checks. Done with `require_admin`.

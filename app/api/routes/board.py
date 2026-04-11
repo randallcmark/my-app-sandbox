@@ -147,6 +147,16 @@ def render_board(user: User, jobs: list[Job]) -> str:
       margin-top: 6px;
     }}
 
+    .topbar nav {{
+      align-items: center;
+      display: flex;
+      gap: 12px;
+    }}
+
+    .topbar form {{
+      margin: 0;
+    }}
+
     .docs-link {{
       color: var(--accent-strong);
       font-weight: 700;
@@ -295,7 +305,12 @@ def render_board(user: User, jobs: list[Job]) -> str:
         <h1>Application Board</h1>
         <p>{escape(user.email)}</p>
       </div>
-      <a class="docs-link" href="/docs">API docs</a>
+      <nav>
+        <a class="docs-link" href="/docs">API docs</a>
+        <form method="post" action="/logout">
+          <button type="submit">Sign out</button>
+        </form>
+      </nav>
     </header>
     <p class="notice" role="status" aria-live="polite"></p>
     <div class="board" data-statuses="{escape(status_list)}">

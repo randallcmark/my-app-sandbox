@@ -12,10 +12,10 @@ def test_health_check() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_root_redirects_to_api_docs() -> None:
+def test_root_redirects_to_login_for_anonymous_user() -> None:
     client = TestClient(app, follow_redirects=False)
 
     response = client.get("/")
 
     assert response.status_code == 307
-    assert response.headers["location"] == "/docs"
+    assert response.headers["location"] == "/login"

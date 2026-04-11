@@ -7,7 +7,7 @@ http://127.0.0.1:8000/board
 ```
 
 It requires a logged-in browser session. The root path redirects logged-in users to `/board`;
-anonymous users are still sent to `/docs`.
+anonymous users are sent to `/login`.
 
 ## Current Behavior
 
@@ -42,14 +42,16 @@ make run
 3. Open:
 
 ```text
-http://127.0.0.1:8000/board
+http://127.0.0.1:8000/login
 ```
 
-4. Confirm the captured job appears in `Saved`.
+4. Sign in with the user credentials.
 
-5. Use the card controls to move it to another stage.
+5. Confirm the captured job appears in `Saved`.
 
-6. Refresh the page and confirm the job remains in the new stage.
+6. Use the card controls to move it to another stage.
+
+7. Refresh the page and confirm the job remains in the new stage.
 
 ## Terminal Check
 

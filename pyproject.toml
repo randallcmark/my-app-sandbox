@@ -13,6 +13,7 @@ dependencies = [
     "email-validator>=2,<3",
     "fastapi>=0.110,<1",
     "pydantic-settings>=2,<3",
+    "python-multipart>=0.0.9,<1",
     "pwdlib[argon2]>=0.2,<1",
     "sqlalchemy>=2,<3",
     "uvicorn[standard]>=0.27,<1",

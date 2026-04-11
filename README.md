@@ -67,6 +67,12 @@ Run the API:
 make run
 ```
 
+Open the app:
+
+```text
+http://127.0.0.1:8000/login
+```
+
 If you prefer to call Uvicorn directly, use the virtualenv binary:
 
 ```bash

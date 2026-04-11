@@ -64,18 +64,27 @@ def set_session_cookie(response: Response, token: str) -> None:
     )
 
 
-@router.post("/login", response_model=UserResponse)
-def login(payload: LoginRequest, request: Request, response: Response, db: DbSession) -> UserResponse:
+def authenticate_local_user(db: DbSession, email: str, password: str) -> User:
     if settings.auth_mode not in ("local", "mixed"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Local auth is disabled")
 
-    user = get_user_by_email(db, payload.email)
+    user = get_user_by_email(db, email)
     if user is None or user.password_hash is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    if not user.is_active or not verify_password(payload.password, user.password_hash):
+    if not user.is_active or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
+    return user
+
+
+def create_login_session(
+    db: DbSession,
+    user: User,
+    *,
+    request: Request,
+    response: Response,
+) -> None:
     token, _ = create_user_session(
         db,
         user,
@@ -84,6 +93,12 @@ def login(payload: LoginRequest, request: Request, response: Response, db: DbSes
     )
     db.commit()
     set_session_cookie(response, token)
+
+
+@router.post("/login", response_model=UserResponse)
+def login(payload: LoginRequest, request: Request, response: Response, db: DbSession) -> UserResponse:
+    user = authenticate_local_user(db, payload.email, payload.password)
+    create_login_session(db, user, request=request, response=response)
     return user_response(user)
 
 
