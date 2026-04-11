@@ -45,7 +45,7 @@ def _job_card(job: Job) -> str:
     return f"""
     <article class="job-card" data-job-uuid="{escape(job.uuid)}" draggable="true">
       <div>
-        <h3>{escape(job.title)}</h3>
+        <h3><a href="/jobs/{escape(job.uuid, quote=True)}">{escape(job.title)}</a></h3>
         {company}
         {location}
       </div>
@@ -240,6 +240,13 @@ def render_board(user: User, jobs: list[Job]) -> str:
     .card-meta a {{
       color: var(--accent-strong);
       font-weight: 700;
+    }}
+
+    .job-card h3 a {{
+      color: var(--ink);
+      text-decoration-color: var(--accent);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
     }}
 
     .card-actions {{

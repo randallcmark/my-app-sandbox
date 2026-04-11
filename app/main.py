@@ -8,6 +8,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.board import router as board_router
 from app.api.routes.capture import router as capture_router
 from app.api.routes.health import router as health_router
+from app.api.routes.job_detail import router as job_detail_router
 from app.api.routes.jobs import router as jobs_router
 from app.api.routes.session_ui import router as session_ui_router
 from app.auth.sessions import get_active_session
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(board_router)
     app.include_router(capture_router)
     app.include_router(health_router)
+    app.include_router(job_detail_router)
     app.include_router(jobs_router)
     app.include_router(session_ui_router)
     return app

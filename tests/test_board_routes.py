@@ -70,6 +70,7 @@ def test_board_renders_current_users_jobs_by_stage(tmp_path: Path, monkeypatch) 
         assert 'data-status="saved"' in response.text
         assert 'data-status="applied"' in response.text
         assert 'draggable="true"' in response.text
+        assert "/jobs/" in response.text
         assert 'fetch("/api/jobs/board"' in response.text
     finally:
         app.dependency_overrides.clear()

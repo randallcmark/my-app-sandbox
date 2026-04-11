@@ -37,6 +37,10 @@ Kanban board notes live in:
 
 - `docs/KANBAN_BOARD.md`
 
+Job detail page notes live in:
+
+- `docs/JOB_DETAIL.md`
+
 ## Current State
 
 This clean repo currently contains the minimal application skeleton:

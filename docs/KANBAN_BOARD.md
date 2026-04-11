@@ -13,6 +13,7 @@ anonymous users are sent to `/login`.
 
 - Shows owner-scoped jobs only.
 - Hides `archived` jobs.
+- Links each card title to a job detail page at `/jobs/{job_uuid}`.
 - Groups cards into the current workflow stages:
   - `saved`
   - `interested`
@@ -51,9 +52,13 @@ http://127.0.0.1:8000/login
 
 5. Confirm the captured job appears in `Saved`.
 
-6. Drag the card to another stage, or use the card controls.
+6. Open the card title and confirm the detail page shows the job fields and timeline.
 
-7. Refresh the page and confirm the job remains in the new stage.
+7. Return to the board.
+
+8. Drag the card to another stage, or use the card controls.
+
+9. Refresh the page and confirm the job remains in the new stage.
 
 ## Terminal Check
 
