@@ -37,3 +37,19 @@ Rationale:
 - Schema drift was one of the main issues in the original MVP.
 
 The baseline schema includes users, API tokens, jobs, applications, interviews, communications, and artefacts.
+
+## 2026-04-11: Store Provider-Relative Artefact Keys
+
+Artefact records should store provider-relative keys, not absolute local paths or full provider URIs.
+
+Rationale:
+
+- The same database record can be interpreted by local and S3-compatible storage providers.
+- Backups and restores are more portable.
+- Path traversal checks can be centralized before providers touch the filesystem or object store.
+
+Example:
+
+```text
+jobs/<job-uuid>/applications/<application-uuid>/resume.pdf
+```

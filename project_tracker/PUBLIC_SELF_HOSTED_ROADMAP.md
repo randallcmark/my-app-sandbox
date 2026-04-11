@@ -271,7 +271,7 @@ Tasks:
   - Either job-owned interviews with optional application link, or
   - application-owned interviews with derived job.
 - Fix S3 path handling:
-  - Prefer provider-relative keys in DB, or
+  - Prefer provider-relative keys in DB. Chosen as the storage invariant in the clean rebuild.
   - consistently parse provider URIs in each provider.
 - Add best-effort storage deletion when artefact records are deleted.
 - Add backup and restore commands:
