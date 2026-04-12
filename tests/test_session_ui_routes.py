@@ -1,4 +1,6 @@
 from pathlib import Path
+from io import BytesIO
+from zipfile import ZipFile
 
 from sqlalchemy import select
 
@@ -243,9 +245,121 @@ def test_admin_page_shows_system_links_and_counts(tmp_path: Path, monkeypatch) -
         assert "Users" in response.text
         assert "Jobs" in response.text
         assert "API tokens" in response.text
-        assert "Create or revoke capture API tokens" in response.text
+        assert "Create Capture Token" in response.text
+        assert "Capture" in response.text
+        assert "admin@example.com" in response.text
         assert 'href="/api/capture/bookmarklet"' in response.text
         assert 'href="/health"' in response.text
+        assert 'href="/admin/backup"' in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_creates_capture_token_and_shows_secret_once(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            create_local_user(db, email="admin@example.com", password="password", is_admin=True)
+            db.commit()
+
+        client.post(
+            "/login",
+            data={"email": "admin@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.post(
+            "/admin/api-tokens",
+            data={"name": "Admin browser capture", "scope": "capture:jobs"},
+        )
+
+        assert response.status_code == 200
+        assert "New admin token" in response.text
+        assert "ats_" in response.text
+        assert "Admin browser capture" in response.text
+        assert "capture:jobs" in response.text
+
+        with session_local() as db:
+            api_token = db.scalar(select(ApiToken).where(ApiToken.name == "Admin browser capture"))
+
+            assert api_token is not None
+            assert api_token.owner.email == "admin@example.com"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_revokes_any_user_token(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            admin = create_local_user(db, email="admin@example.com", password="password", is_admin=True)
+            owner = create_local_user(db, email="owner@example.com", password="password")
+            db.flush()
+            api_token = ApiToken(
+                owner_user_id=owner.id,
+                name="Owner token",
+                token_hash="owner-hash",
+                scopes="capture:jobs",
+            )
+            db.add(api_token)
+            db.commit()
+            token_uuid = api_token.uuid
+            assert admin.is_admin is True
+
+        client.post(
+            "/login",
+            data={"email": "admin@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.post(f"/admin/api-tokens/{token_uuid}/revoke", follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/admin"
+
+        with session_local() as db:
+            api_token = db.scalar(select(ApiToken).where(ApiToken.uuid == token_uuid))
+
+            assert api_token is not None
+            assert api_token.revoked_at is not None
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_backup_download_contains_database_and_artefacts(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    database_path = tmp_path / "app.db"
+    artefact_root = tmp_path / "artefacts"
+    artefact_path = artefact_root / "jobs" / "job-uuid" / "artefacts" / "resume.txt"
+    artefact_path.parent.mkdir(parents=True)
+    artefact_path.write_text("resume bytes")
+    monkeypatch.setattr(settings, "database_url", f"sqlite:///{database_path}")
+    monkeypatch.setattr(settings, "local_storage_path", str(artefact_root))
+    try:
+        with session_local() as db:
+            admin = create_local_user(db, email="admin@example.com", password="password", is_admin=True)
+            db.add(Job(owner_user_id=admin.id, title="Backup role", status="saved"))
+            db.commit()
+
+        client.post(
+            "/login",
+            data={"email": "admin@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.get("/admin/backup")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/zip"
+        assert "application-tracker-backup-" in response.headers["content-disposition"]
+
+        with ZipFile(BytesIO(response.content)) as archive:
+            names = set(archive.namelist())
+
+            assert "MANIFEST.txt" in names
+            assert "database/app.db" in names
+            assert "artefacts/jobs/job-uuid/artefacts/resume.txt" in names
+            assert archive.read("artefacts/jobs/job-uuid/artefacts/resume.txt") == b"resume bytes"
     finally:
         app.dependency_overrides.clear()
 

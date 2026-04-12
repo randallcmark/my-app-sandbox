@@ -1,10 +1,16 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from html import escape
+from io import BytesIO
+from pathlib import Path
+import sqlite3
+import tempfile
 from typing import Annotated
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import func, select
+from sqlalchemy.engine import make_url
 
 from app.api.deps import DbSession, get_current_user, require_admin
 from app.api.routes.auth import authenticate_local_user, create_login_session
@@ -311,6 +317,31 @@ def _api_token_row(api_token: ApiToken) -> str:
     """
 
 
+def _admin_api_token_row(api_token: ApiToken) -> str:
+    revoked = api_token.revoked_at is not None
+    status_label = "Revoked" if revoked else "Active"
+    revoke_form = (
+        '<span class="muted">Revoked</span>'
+        if revoked
+        else f"""
+        <form method="post" action="/admin/api-tokens/{escape(api_token.uuid, quote=True)}/revoke">
+          <button type="submit" class="secondary">Revoke</button>
+        </form>
+        """
+    )
+    return f"""
+    <tr>
+      <td>{escape(api_token.owner.email)}</td>
+      <td>{escape(api_token.name)}</td>
+      <td>{escape(", ".join(decode_scopes(api_token.scopes)))}</td>
+      <td>{escape(status_label)}</td>
+      <td>{escape(_value(api_token.created_at))}</td>
+      <td>{escape(_value(api_token.last_used_at))}</td>
+      <td>{revoke_form}</td>
+    </tr>
+    """
+
+
 def settings_page(user: User, api_tokens: list[ApiToken], *, new_token: str | None = None) -> HTMLResponse:
     token_rows = "\n".join(_api_token_row(api_token) for api_token in api_tokens)
     if not token_rows:
@@ -538,7 +569,30 @@ def settings_page(user: User, api_tokens: list[ApiToken], *, new_token: str | No
     )
 
 
-def admin_page(user: User, *, user_count: int, job_count: int, token_count: int) -> HTMLResponse:
+def admin_page(
+    user: User,
+    *,
+    user_count: int,
+    job_count: int,
+    token_count: int,
+    api_tokens: list[ApiToken],
+    new_token: str | None = None,
+) -> HTMLResponse:
+    token_rows = "\n".join(_admin_api_token_row(api_token) for api_token in api_tokens)
+    if not token_rows:
+        token_rows = '<tr><td colspan="7" class="muted">No API tokens yet.</td></tr>'
+    new_token_block = (
+        f"""
+        <section class="secret">
+          <h2>New admin token</h2>
+          <p>This secret is shown once. Paste it into Capture setup now.</p>
+          <input value="{escape(new_token, quote=True)}" readonly>
+          <p><a href="/api/capture/bookmarklet">Open Capture setup</a></p>
+        </section>
+        """
+        if new_token
+        else ""
+    )
     return HTMLResponse(
         f"""<!doctype html>
 <html lang="en">
@@ -612,6 +666,36 @@ def admin_page(user: User, *, user_count: int, job_count: int, token_count: int)
       font-weight: 700;
     }}
 
+    input {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      padding: 8px 10px;
+      width: 100%;
+    }}
+
+    button {{
+      background: var(--accent);
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      min-height: 38px;
+      padding: 0 14px;
+    }}
+
+    button:hover {{
+      background: var(--accent-strong);
+    }}
+
+    button.secondary {{
+      background: #ffffff;
+      border: 1px solid var(--line);
+      color: #a43d2b;
+    }}
+
     section {{
       background: var(--panel);
       border: 1px solid var(--line);
@@ -620,6 +704,16 @@ def admin_page(user: User, *, user_count: int, job_count: int, token_count: int)
       gap: 14px;
       margin-bottom: 16px;
       padding: 18px;
+    }}
+
+    form,
+    label {{
+      display: grid;
+      gap: 8px;
+    }}
+
+    label {{
+      font-weight: 700;
     }}
 
     .stats {{
@@ -647,6 +741,33 @@ def admin_page(user: User, *, user_count: int, job_count: int, token_count: int)
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }}
 
+    table {{
+      border-collapse: collapse;
+      width: 100%;
+    }}
+
+    th,
+    td {{
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: middle;
+    }}
+
+    th {{
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+    }}
+
+    td form {{
+      margin: 0;
+    }}
+
+    .secret {{
+      border-color: var(--accent);
+    }}
+
     @media (max-width: 760px) {{
       main {{
         padding: 16px;
@@ -658,6 +779,11 @@ def admin_page(user: User, *, user_count: int, job_count: int, token_count: int)
       .link-list {{
         align-items: start;
         display: grid;
+      }}
+
+      table {{
+        display: block;
+        overflow-x: auto;
       }}
     }}
   </style>
@@ -676,6 +802,8 @@ def admin_page(user: User, *, user_count: int, job_count: int, token_count: int)
       </nav>
     </header>
 
+    {new_token_block}
+
     <section>
       <h2>System</h2>
       <div class="stats">
@@ -691,11 +819,44 @@ def admin_page(user: User, *, user_count: int, job_count: int, token_count: int)
     <section>
       <h2>Admin Tasks</h2>
       <div class="link-list">
-        <a href="/settings">Create or revoke capture API tokens</a>
         <a href="/api/capture/bookmarklet">Capture setup</a>
         <a href="/health">Health check</a>
         <a href="/docs">Open API documentation</a>
+        <a href="/admin/backup">Download backup</a>
       </div>
+    </section>
+
+    <section>
+      <h2>Create Capture Token</h2>
+      <p>Create a scoped capture token owned by your admin account.</p>
+      <form method="post" action="/admin/api-tokens">
+        <label>
+          Token name
+          <input name="name" value="Browser capture" maxlength="200" required>
+        </label>
+        <input type="hidden" name="scope" value="{CAPTURE_JOBS_SCOPE}">
+        <button type="submit">Create capture token</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>API Tokens</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Owner</th>
+            <th>Name</th>
+            <th>Scopes</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Last used</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {token_rows}
+        </tbody>
+      </table>
     </section>
   </main>
 </body>
@@ -713,8 +874,82 @@ def _list_user_api_tokens(db: DbSession, user: User) -> list[ApiToken]:
     )
 
 
+def _list_all_api_tokens(db: DbSession) -> list[ApiToken]:
+    return list(
+        db.scalars(
+            select(ApiToken).join(ApiToken.owner).order_by(ApiToken.created_at.desc(), ApiToken.id.desc())
+        ).all()
+    )
+
+
 def _has_users(db: DbSession) -> bool:
     return db.scalar(select(User.id).limit(1)) is not None
+
+
+def _sqlite_database_path() -> Path | None:
+    url = make_url(settings.database_url)
+    if url.get_backend_name() != "sqlite" or not url.database or url.database == ":memory:":
+        return None
+    return Path(url.database).resolve()
+
+
+def _write_sqlite_backup(archive: ZipFile) -> None:
+    database_path = _sqlite_database_path()
+    if database_path is None or not database_path.exists():
+        archive.writestr("database/README.txt", "SQLite database file was not available for backup.\n")
+        return
+
+    with tempfile.NamedTemporaryFile(suffix=".db") as backup_file:
+        source = sqlite3.connect(database_path)
+        destination = sqlite3.connect(backup_file.name)
+        try:
+            source.backup(destination)
+        finally:
+            destination.close()
+            source.close()
+        archive.write(backup_file.name, "database/app.db")
+
+
+def _write_local_artefacts_backup(archive: ZipFile) -> None:
+    if settings.storage_backend != "local":
+        archive.writestr(
+            "artefacts/README.txt",
+            f"Artefact backup is not supported for storage backend: {settings.storage_backend}.\n",
+        )
+        return
+
+    storage_root = Path(settings.local_storage_path)
+    if not storage_root.exists():
+        archive.writestr("artefacts/README.txt", "No local artefact storage directory exists yet.\n")
+        return
+
+    for path in sorted(storage_root.rglob("*")):
+        if not path.is_file():
+            continue
+        archive.write(path, Path("artefacts") / path.relative_to(storage_root))
+
+
+def _build_backup_zip() -> bytes:
+    buffer = BytesIO()
+    timestamp = datetime.now(UTC).replace(microsecond=0).isoformat()
+    with ZipFile(buffer, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "MANIFEST.txt",
+            "\n".join(
+                [
+                    "Application Tracker backup",
+                    f"Created at: {timestamp}",
+                    f"Database URL: {settings.database_url}",
+                    f"Storage backend: {settings.storage_backend}",
+                    f"Local storage path: {settings.local_storage_path}",
+                    "",
+                ]
+            ),
+        )
+        _write_sqlite_backup(archive)
+        _write_local_artefacts_backup(archive)
+    buffer.seek(0)
+    return buffer.getvalue()
 
 
 @router.get("/login", response_class=HTMLResponse, include_in_schema=False)
@@ -782,6 +1017,71 @@ def admin_form(
         user_count=user_count,
         job_count=job_count,
         token_count=token_count,
+        api_tokens=_list_all_api_tokens(db),
+    )
+
+
+@router.post("/admin/api-tokens", response_class=HTMLResponse, include_in_schema=False)
+def admin_create_api_token(
+    db: DbSession,
+    current_user: Annotated[User, Depends(require_admin)],
+    name: Annotated[str, Form()] = "Browser capture",
+    scope: Annotated[str, Form()] = CAPTURE_JOBS_SCOPE,
+) -> HTMLResponse:
+    token_name = name.strip()
+    if not token_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token name is required")
+    try:
+        raw_token, _ = create_user_api_token(
+            db,
+            current_user,
+            name=token_name,
+            scopes=[scope],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    db.commit()
+    user_count = db.scalar(select(func.count(User.id))) or 0
+    job_count = db.scalar(select(func.count(Job.id))) or 0
+    token_count = db.scalar(select(func.count(ApiToken.id))) or 0
+    return admin_page(
+        current_user,
+        user_count=user_count,
+        job_count=job_count,
+        token_count=token_count,
+        api_tokens=_list_all_api_tokens(db),
+        new_token=raw_token,
+    )
+
+
+@router.post("/admin/api-tokens/{token_uuid}/revoke", include_in_schema=False)
+def admin_revoke_api_token(
+    token_uuid: str,
+    db: DbSession,
+    current_user: Annotated[User, Depends(require_admin)],
+) -> RedirectResponse:
+    _ = current_user
+    api_token = db.scalar(select(ApiToken).where(ApiToken.uuid == token_uuid))
+    if api_token is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API token not found")
+    if api_token.revoked_at is None:
+        api_token.revoked_at = datetime.now(UTC)
+    db.commit()
+    return RedirectResponse(url="/admin", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.get("/admin/backup", include_in_schema=False)
+def admin_backup(
+    current_user: Annotated[User, Depends(require_admin)],
+) -> Response:
+    _ = current_user
+    backup = _build_backup_zip()
+    filename = f'application-tracker-backup-{datetime.now(UTC).strftime("%Y%m%d-%H%M%S")}.zip'
+    return Response(
+        backup,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

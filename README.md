@@ -163,6 +163,15 @@ A command-line fallback is also available:
 docker compose exec app python -m app.cli users create-admin --email you@example.com
 ```
 
+Admin setup and maintenance tasks are available after login:
+
+```text
+http://localhost:8000/admin
+```
+
+The admin page can create and revoke capture API tokens across users, open capture setup, check
+health, and download a backup ZIP containing the SQLite database and local artefact files.
+
 For a NAS or homelab deployment, keep `/app/data` on persistent storage. That directory contains
 the SQLite database and uploaded artefacts. The bundled Compose file uses a named volume:
 
@@ -203,6 +212,9 @@ git pull
 docker compose up -d --build
 docker compose exec app alembic upgrade head
 ```
+
+Download periodic backups from `/admin`, or back up the persistent `/app/data` mount directly from
+the host.
 
 For `APP_ENV=production`, `PUBLIC_BASE_URL` must be HTTPS and the default session secret is
 rejected. Put the app behind QNAP's reverse proxy, another reverse proxy, or a TLS terminator, then

@@ -23,6 +23,15 @@ http://127.0.0.1:8000/settings
 Use `Create capture token`. The token secret is shown once. Paste it into Capture setup before
 leaving the page.
 
+Admins can also create and revoke capture tokens from:
+
+```text
+http://127.0.0.1:8000/admin
+```
+
+Admin token creation creates a token owned by the current admin user. Admin revocation can revoke
+tokens across users.
+
 ### Terminal
 
 Log in with a browser session first:
@@ -71,7 +80,8 @@ curl -i \
   http://127.0.0.1:8000/auth/api-tokens/token-uuid
 ```
 
-Revocation is owner-scoped. A logged-in user cannot revoke another user's token.
+API revocation is owner-scoped. A logged-in user cannot revoke another user's token through the API
+or Settings page. Admins can revoke tokens across users from `/admin`.
 
 ## Browser Bookmarklet
 

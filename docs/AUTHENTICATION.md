@@ -260,6 +260,7 @@ Status: Done
 - Add API token creation/revocation. Done.
 - Add bearer-token auth dependency. Done.
 - Add `capture:jobs` scope. Done.
+- Add admin UI for capture token creation/revocation across users. Done.
 
 ### Slice 5: Generic OIDC
 
