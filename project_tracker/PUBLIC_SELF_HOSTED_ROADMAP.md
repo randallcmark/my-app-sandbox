@@ -43,8 +43,17 @@ Known next product focus:
 - UI polish for the board and job detail page now that the core workflow is usable.
 - Editing still needs to expand beyond core job fields into notes, applications, interviews, and
   artefact metadata.
-- Admin UI expansion for user management, backup restore/verification, scheduler runs, and richer
-  system health.
+- Admin object management:
+  - make dashboard counts clickable into object lists for users, jobs, and API tokens;
+  - provide contextual actions such as add/remove user, revoke token, inspect jobs, and ownership
+    checks;
+  - add a password reset workflow, likely using one-time reset tokens and email delivery once mail
+    settings exist.
+- Backup restore workflow:
+  - validate uploaded backup ZIPs;
+  - support restoring SQLite plus local artefacts safely;
+  - include dry-run/verification steps before replacing active data.
+- Admin UI expansion for scheduler runs and richer system health.
 - Deployment quality-of-life for HTTPS/reverse-proxy guidance, backups, health checks, and packaged
   upgrade commands.
 - Future job detail overlay/modal instead of full navigation away from the board.
