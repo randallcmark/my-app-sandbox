@@ -1,8 +1,12 @@
 from pathlib import Path
 
+from sqlalchemy import select
+
 from app.auth.users import create_local_user
 from app.core.config import settings
 from app.db.models.api_token import ApiToken
+from app.db.models.job import Job
+from app.db.models.user import User
 from app.main import app
 from tests.test_local_auth_routes import build_client
 
@@ -16,6 +20,88 @@ def test_login_page_renders_form(tmp_path: Path, monkeypatch) -> None:
         assert '<form method="post" action="/login">' in response.text
         assert 'name="email"' in response.text
         assert 'name="password"' in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_root_redirects_to_setup_when_no_users_exist(tmp_path: Path, monkeypatch) -> None:
+    client, _ = build_client(tmp_path, monkeypatch)
+    try:
+        response = client.get("/", follow_redirects=False)
+
+        assert response.status_code == 307
+        assert response.headers["location"] == "/setup"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_setup_form_creates_first_admin_and_logs_in(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        form_response = client.get("/setup")
+
+        assert form_response.status_code == 200
+        assert '<form method="post" action="/setup">' in form_response.text
+        assert "Create admin" in form_response.text
+
+        response = client.post(
+            "/setup",
+            data={
+                "email": "admin@example.com",
+                "display_name": "Admin User",
+                "password": "correct horse battery staple",
+                "confirm_password": "correct horse battery staple",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/board"
+        assert settings.session_cookie_name in client.cookies
+
+        with session_local() as db:
+            user = db.scalar(select(User).where(User.email == "admin@example.com"))
+
+            assert user is not None
+            assert user.display_name == "Admin User"
+            assert user.is_admin is True
+            assert user.is_active is True
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_setup_form_rejects_mismatched_passwords(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        response = client.post(
+            "/setup",
+            data={
+                "email": "admin@example.com",
+                "password": "correct horse battery staple",
+                "confirm_password": "different horse battery staple",
+            },
+        )
+
+        assert response.status_code == 200
+        assert "Passwords do not match" in response.text
+
+        with session_local() as db:
+            assert db.scalar(select(User)) is None
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_setup_redirects_after_user_exists(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            create_local_user(db, email="jobseeker@example.com", password="password")
+            db.commit()
+
+        response = client.get("/setup", follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/login"
     finally:
         app.dependency_overrides.clear()
 
@@ -88,6 +174,78 @@ def test_settings_requires_login(tmp_path: Path, monkeypatch) -> None:
         response = client.get("/settings")
 
         assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_requires_login(tmp_path: Path, monkeypatch) -> None:
+    client, _ = build_client(tmp_path, monkeypatch)
+    try:
+        response = client.get("/admin")
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_rejects_non_admin_user(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            create_local_user(db, email="jobseeker@example.com", password="password")
+            db.commit()
+
+        client.post(
+            "/login",
+            data={"email": "jobseeker@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.get("/admin")
+
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_page_shows_system_links_and_counts(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            admin = create_local_user(
+                db,
+                email="admin@example.com",
+                password="password",
+                is_admin=True,
+            )
+            db.flush()
+            db.add(Job(owner_user_id=admin.id, title="Tracked role", status="saved"))
+            db.add(
+                ApiToken(
+                    owner_user_id=admin.id,
+                    name="Capture",
+                    token_hash="hash",
+                    scopes="capture:jobs",
+                )
+            )
+            db.commit()
+
+        client.post(
+            "/login",
+            data={"email": "admin@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.get("/admin")
+
+        assert response.status_code == 200
+        assert "Admin" in response.text
+        assert "Users" in response.text
+        assert "Jobs" in response.text
+        assert "API tokens" in response.text
+        assert "Create or revoke capture API tokens" in response.text
+        assert 'href="/api/capture/bookmarklet"' in response.text
+        assert 'href="/health"' in response.text
     finally:
         app.dependency_overrides.clear()
 

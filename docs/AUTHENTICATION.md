@@ -53,7 +53,7 @@ Required capabilities:
 - DB-backed opaque sessions;
 - secure HTTP-only cookies;
 - CSRF protection for server-rendered forms;
-- first-run admin bootstrap command;
+- first-run admin setup wizard with a command-line bootstrap fallback;
 - login rate limiting;
 - admin user management;
 - session revocation.
@@ -239,7 +239,7 @@ Status: Done
 
 Status: Done
 
-- Add first-run admin bootstrap command. Done.
+- Add first-run admin setup wizard and bootstrap command. Done.
 - Add local login/logout routes. Done for JSON and browser form endpoints.
 - Add current-user dependency. Done.
 - Add secure session cookie issue/clear behavior. Done.

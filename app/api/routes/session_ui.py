@@ -4,9 +4,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from app.api.deps import DbSession, get_current_user
+from app.api.deps import DbSession, get_current_user, require_admin
 from app.api.routes.auth import authenticate_local_user, create_login_session
 from app.auth.api_tokens import (
     CAPTURE_JOBS_SCOPE,
@@ -16,8 +16,10 @@ from app.auth.api_tokens import (
 )
 from app.auth.csrf import clear_csrf_cookie
 from app.auth.sessions import revoke_session
+from app.auth.users import UserAlreadyExists, create_local_user
 from app.core.config import settings
 from app.db.models.api_token import ApiToken
+from app.db.models.job import Job
 from app.db.models.user import User
 
 router = APIRouter(tags=["session-ui"])
@@ -147,6 +149,137 @@ def login_page(*, error: str | None = None) -> HTMLResponse:
         <input name="password" type="password" autocomplete="current-password" required>
       </label>
       <button type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>"""
+    )
+
+
+def setup_page(*, error: str | None = None) -> HTMLResponse:
+    error_block = f'<p class="error">{escape(error)}</p>' if error else ""
+    return HTMLResponse(
+        f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set Up - Application Tracker</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --page: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #1d1f24;
+      --muted: #626b76;
+      --line: #d7dce2;
+      --accent: #147a5c;
+      --accent-strong: #0f5d47;
+      --error: #a43d2b;
+    }}
+
+    * {{
+      box-sizing: border-box;
+    }}
+
+    body {{
+      align-items: center;
+      background: var(--page);
+      color: var(--ink);
+      display: grid;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+    }}
+
+    main {{
+      margin: 0 auto;
+      max-width: 480px;
+      width: 100%;
+    }}
+
+    h1 {{
+      font-size: 2rem;
+      line-height: 1.1;
+      margin: 0 0 8px;
+    }}
+
+    p {{
+      color: var(--muted);
+      line-height: 1.45;
+      margin: 0 0 20px;
+    }}
+
+    form {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 14px;
+      padding: 20px;
+    }}
+
+    label {{
+      display: grid;
+      font-weight: 700;
+      gap: 6px;
+    }}
+
+    input {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      min-height: 42px;
+      padding: 8px 10px;
+      width: 100%;
+    }}
+
+    button {{
+      background: var(--accent);
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+      min-height: 44px;
+    }}
+
+    button:hover {{
+      background: var(--accent-strong);
+    }}
+
+    .error {{
+      color: var(--error);
+      font-weight: 700;
+      margin: 0;
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Set up Application Tracker</h1>
+    <p>Create the first local administrator. This page is only available before any users exist.</p>
+    <form method="post" action="/setup">
+      {error_block}
+      <label>
+        Email
+        <input name="email" type="email" autocomplete="email" required>
+      </label>
+      <label>
+        Display name
+        <input name="display_name" autocomplete="name" maxlength="200">
+      </label>
+      <label>
+        Password
+        <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <label>
+        Confirm password
+        <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
+      </label>
+      <button type="submit">Create admin</button>
     </form>
   </main>
 </body>
@@ -360,7 +493,10 @@ def settings_page(user: User, api_tokens: list[ApiToken], *, new_token: str | No
         <h1>Settings</h1>
         <p>{escape(user.email)}</p>
       </div>
-      <a href="/board">Board</a>
+      <nav>
+        {'<a href="/admin">Admin</a>' if user.is_admin else ""}
+        <a href="/board">Board</a>
+      </nav>
     </header>
 
     {new_token_block}
@@ -402,6 +538,171 @@ def settings_page(user: User, api_tokens: list[ApiToken], *, new_token: str | No
     )
 
 
+def admin_page(user: User, *, user_count: int, job_count: int, token_count: int) -> HTMLResponse:
+    return HTMLResponse(
+        f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin - Application Tracker</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --page: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #1d1f24;
+      --muted: #626b76;
+      --line: #d7dce2;
+      --accent: #147a5c;
+      --accent-strong: #0f5d47;
+    }}
+
+    * {{
+      box-sizing: border-box;
+    }}
+
+    body {{
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+    }}
+
+    main {{
+      margin: 0 auto;
+      max-width: 980px;
+      min-height: 100vh;
+      padding: 24px;
+    }}
+
+    .topbar,
+    nav,
+    .stats {{
+      align-items: center;
+      display: flex;
+      gap: 12px;
+    }}
+
+    .topbar {{
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }}
+
+    h1, h2, p {{
+      margin: 0;
+    }}
+
+    h1 {{
+      font-size: 2rem;
+      line-height: 1.1;
+    }}
+
+    h2 {{
+      font-size: 1.1rem;
+    }}
+
+    p,
+    .muted {{
+      color: var(--muted);
+    }}
+
+    a {{
+      color: var(--accent-strong);
+      font-weight: 700;
+    }}
+
+    section {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 14px;
+      margin-bottom: 16px;
+      padding: 18px;
+    }}
+
+    .stats {{
+      align-items: stretch;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }}
+
+    .stat {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }}
+
+    .stat strong {{
+      display: block;
+      font-size: 1.7rem;
+      line-height: 1;
+      margin-bottom: 6px;
+    }}
+
+    .link-list {{
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }}
+
+    @media (max-width: 760px) {{
+      main {{
+        padding: 16px;
+      }}
+
+      .topbar,
+      nav,
+      .stats,
+      .link-list {{
+        align-items: start;
+        display: grid;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <div>
+        <h1>Admin</h1>
+        <p>{escape(user.email)}</p>
+      </div>
+      <nav>
+        <a href="/board">Board</a>
+        <a href="/settings">Settings</a>
+        <a href="/docs">API docs</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>System</h2>
+      <div class="stats">
+        <div class="stat"><strong>{user_count}</strong><span class="muted">Users</span></div>
+        <div class="stat"><strong>{job_count}</strong><span class="muted">Jobs</span></div>
+        <div class="stat"><strong>{token_count}</strong><span class="muted">API tokens</span></div>
+      </div>
+      <p>Environment: {escape(settings.app_env)} · Auth: {escape(settings.auth_mode)}</p>
+      <p>Public URL: {escape(str(settings.public_base_url))}</p>
+      <p>Storage: {escape(settings.storage_backend)} at {escape(settings.local_storage_path)}</p>
+    </section>
+
+    <section>
+      <h2>Admin Tasks</h2>
+      <div class="link-list">
+        <a href="/settings">Create or revoke capture API tokens</a>
+        <a href="/api/capture/bookmarklet">Capture setup</a>
+        <a href="/health">Health check</a>
+        <a href="/docs">Open API documentation</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>"""
+    )
+
+
 def _list_user_api_tokens(db: DbSession, user: User) -> list[ApiToken]:
     return list(
         db.scalars(
@@ -412,9 +713,52 @@ def _list_user_api_tokens(db: DbSession, user: User) -> list[ApiToken]:
     )
 
 
+def _has_users(db: DbSession) -> bool:
+    return db.scalar(select(User.id).limit(1)) is not None
+
+
 @router.get("/login", response_class=HTMLResponse, include_in_schema=False)
 def login_form() -> HTMLResponse:
     return login_page()
+
+
+@router.get("/setup", response_class=HTMLResponse, response_model=None, include_in_schema=False)
+def setup_form(db: DbSession) -> HTMLResponse | RedirectResponse:
+    if _has_users(db):
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    return setup_page()
+
+
+@router.post("/setup", response_class=HTMLResponse, response_model=None, include_in_schema=False)
+def setup_form_submit(
+    request: Request,
+    db: DbSession,
+    email: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    confirm_password: Annotated[str, Form()],
+    display_name: Annotated[str, Form()] = "",
+) -> HTMLResponse | RedirectResponse:
+    if _has_users(db):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Application is already set up")
+    if password != confirm_password:
+        return setup_page(error="Passwords do not match")
+    if len(password) < 8:
+        return setup_page(error="Password must be at least 8 characters")
+
+    try:
+        user = create_local_user(
+            db,
+            email=email,
+            password=password,
+            display_name=display_name.strip() or None,
+            is_admin=True,
+        )
+    except UserAlreadyExists:
+        return setup_page(error="A user already exists")
+
+    response = RedirectResponse(url="/board", status_code=status.HTTP_303_SEE_OTHER)
+    create_login_session(db, user, request=request, response=response)
+    return response
 
 
 @router.get("/settings", response_class=HTMLResponse, include_in_schema=False)
@@ -423,6 +767,22 @@ def settings_form(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> HTMLResponse:
     return settings_page(current_user, _list_user_api_tokens(db, current_user))
+
+
+@router.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+def admin_form(
+    db: DbSession,
+    current_user: Annotated[User, Depends(require_admin)],
+) -> HTMLResponse:
+    user_count = db.scalar(select(func.count(User.id))) or 0
+    job_count = db.scalar(select(func.count(Job.id))) or 0
+    token_count = db.scalar(select(func.count(ApiToken.id))) or 0
+    return admin_page(
+        current_user,
+        user_count=user_count,
+        job_count=job_count,
+        token_count=token_count,
+    )
 
 
 @router.post("/settings/api-tokens", response_class=HTMLResponse, include_in_schema=False)

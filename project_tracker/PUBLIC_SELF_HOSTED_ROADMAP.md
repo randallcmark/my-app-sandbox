@@ -33,6 +33,8 @@ As of 2026-04-12, the Stage 3 board workflow is browser-tested through:
 - Stage-aging, stale-card, and follow-up due indicators on board cards.
 - Firefox extension capture with readable-description extraction still needing more formatting polish.
 - Docker Compose deployment path with migration and first-admin setup documented.
+- First-run browser setup wizard for creating the initial local admin.
+- Initial admin dashboard with system counts and links to token, capture, health, and API docs.
 
 Known next product focus:
 
@@ -40,8 +42,8 @@ Known next product focus:
 - UI polish for the board and job detail page now that the core workflow is usable.
 - Editing still needs to expand beyond core job fields into notes, applications, interviews, and
   artefact metadata.
-- Admin UI for user/token/system setup so first-run and capture setup do not depend on command-line
-  steps.
+- Admin UI expansion for user management, token management across users, backups, scheduler runs,
+  and system health.
 - Deployment quality-of-life for HTTPS/reverse-proxy guidance, backups, health checks, and packaged
   upgrade commands.
 - Future job detail overlay/modal instead of full navigation away from the board.

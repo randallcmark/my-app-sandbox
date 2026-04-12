@@ -123,7 +123,13 @@ Apply database migrations:
 make migrate
 ```
 
-Create the first local admin user:
+Create the first local admin user from the browser:
+
+```text
+http://127.0.0.1:8000/setup
+```
+
+The setup page is only available while no users exist. A command-line fallback is also available:
 
 ```bash
 EMAIL=you@example.com make create-admin
@@ -143,16 +149,18 @@ Apply database migrations inside the container:
 docker compose exec app alembic upgrade head
 ```
 
-Create the first local admin user:
+Then create the first local admin user in the browser:
+
+```text
+http://localhost:8000/setup
+```
+
+The setup page is only available while no users exist. After setup, sign in at `/login`.
+
+A command-line fallback is also available:
 
 ```bash
 docker compose exec app python -m app.cli users create-admin --email you@example.com
-```
-
-Then open:
-
-```text
-http://localhost:8000/login
 ```
 
 For a NAS or homelab deployment, keep `/app/data` on persistent storage. That directory contains
