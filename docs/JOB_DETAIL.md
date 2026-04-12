@@ -24,6 +24,8 @@ http://127.0.0.1:8000/jobs/new
 - Edits job details after capture or manual creation by double-clicking displayed fields and saving
   inline changes through the jobs API.
 - Shows the collapsed job journal, including `stage_change` events recorded from board movement.
+- Displays journal timestamps in the browser's local timezone while keeping UTC as the stored
+  server value and no-JavaScript fallback text.
 - Changes workflow status explicitly from the detail page, including transitions between focused
   workflow views such as prospects, in-progress, outcomes, and archived.
 - Adds notes to the timeline, with an optional follow-up date.

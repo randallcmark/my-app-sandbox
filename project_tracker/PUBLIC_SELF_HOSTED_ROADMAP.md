@@ -40,9 +40,8 @@ Known next product focus:
 
 Known bugs:
 
-- Timeline/journal timestamps are stored in UTC and currently rendered as UTC on server-rendered pages.
-  Browser users should see times in their local timezone, for example BST instead of UTC during daylight
-  savings.
+- Board follow-up timestamps still use server-rendered UTC/date handling. Job detail journal
+  timestamps now keep UTC as the stored fallback and render in the browser's local timezone.
 
 ---
 

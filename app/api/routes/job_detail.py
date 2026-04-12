@@ -43,6 +43,20 @@ def _value(value: object) -> str:
     return str(value)
 
 
+def _datetime_attr(value: datetime) -> str:
+    timestamp = value
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=UTC)
+    return timestamp.isoformat()
+
+
+def _time_element(value: datetime) -> str:
+    return (
+        f'<time class="local-time" datetime="{escape(_datetime_attr(value), quote=True)}">'
+        f"{escape(_value(value))}</time>"
+    )
+
+
 def _link(label: str, url: str | None) -> str:
     if not url:
         return '<span class="muted">Not set</span>'
@@ -151,14 +165,14 @@ def _editable_description(job: Job) -> str:
 def _timeline_event(event: Communication) -> str:
     occurred_at = event.occurred_at or event.created_at
     follow_up = (
-        f'<p class="follow-up">Follow-up: {escape(_value(event.follow_up_at))}</p>'
+        f'<p class="follow-up">Follow-up: {_time_element(event.follow_up_at)}</p>'
         if event.follow_up_at
         else ""
     )
     notes = f"<p>{escape(event.notes)}</p>" if event.notes else ""
     return f"""
     <li>
-      <time>{escape(_value(occurred_at))}</time>
+      {_time_element(occurred_at)}
       <strong>{escape(event.subject or event.event_type)}</strong>
       {follow_up}
       {notes}
@@ -1123,6 +1137,18 @@ def render_job_detail(job: Job) -> str:
         }}
         return value.trim() === "" ? null : value;
       }}
+
+      document.querySelectorAll(".local-time").forEach((element) => {{
+        const parsed = new Date(element.dateTime);
+        if (Number.isNaN(parsed.getTime())) {{
+          return;
+        }}
+        element.textContent = new Intl.DateTimeFormat(undefined, {{
+          dateStyle: "medium",
+          timeStyle: "short",
+        }}).format(parsed);
+        element.title = `${{element.dateTime}} UTC`;
+      }});
 
       document.querySelectorAll(".editable").forEach((editor) => {{
         editor.addEventListener("dblclick", (event) => {{

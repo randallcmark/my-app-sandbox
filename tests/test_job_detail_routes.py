@@ -87,6 +87,8 @@ def test_job_detail_renders_owned_job_and_timeline(tmp_path: Path, monkeypatch) 
         assert 'id="edit-savebar"' in response.text
         assert '<summary>Journal</summary>' in response.text
         assert "<details class=\"timeline-panel\">" in response.text
+        assert 'class="local-time" datetime="2026-04-11T12:00:00+00:00"' in response.text
+        assert "Intl.DateTimeFormat" in response.text
         assert "Status changed from applied to interviewing" in response.text
         assert "Job status changed from applied to interviewing." in response.text
     finally:
@@ -200,7 +202,9 @@ def test_job_detail_note_form_adds_note_and_redirects(tmp_path: Path, monkeypatc
         assert detail_response.status_code == 200
         assert "Prep" in detail_response.text
         assert "Update resume bullets." in detail_response.text
-        assert "Follow-up: 2026-04-12 00:00" in detail_response.text
+        assert "Follow-up:" in detail_response.text
+        assert 'datetime="2026-04-12T00:00:00+00:00"' in detail_response.text
+        assert ">2026-04-12 00:00</time>" in detail_response.text
 
         with session_local() as db:
             event = db.scalar(select(Communication).where(Communication.subject == "Prep"))
