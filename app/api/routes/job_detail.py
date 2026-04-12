@@ -83,6 +83,71 @@ def _field(label: str, value: object) -> str:
     """
 
 
+def _editable_text(label: str, field_name: str, value: object, *, input_type: str = "text") -> str:
+    raw_value = _input_value(value)
+    return f"""
+    <div class="field">
+      <dt>{escape(label)}</dt>
+      <dd class="editable" data-field="{escape(field_name, quote=True)}" data-kind="text" data-original="{escape(raw_value, quote=True)}" tabindex="0" title="Double-click to edit">
+        <span class="editable-display">{escape(_value(value))}</span>
+        <input class="editable-control" type="{escape(input_type, quote=True)}" value="{escape(raw_value, quote=True)}">
+      </dd>
+    </div>
+    """
+
+
+def _editable_url(label: str, field_name: str, value: str | None, link_label: str) -> str:
+    raw_value = _input_value(value)
+    return f"""
+    <div class="field">
+      <dt>{escape(label)}</dt>
+      <dd class="editable" data-field="{escape(field_name, quote=True)}" data-kind="text" data-original="{escape(raw_value, quote=True)}" tabindex="0" title="Double-click to edit">
+        <span class="editable-display">{_link(link_label, value)}</span>
+        <input class="editable-control" type="url" value="{escape(raw_value, quote=True)}">
+      </dd>
+    </div>
+    """
+
+
+def _editable_select(label: str, field_name: str, value: str) -> str:
+    return f"""
+    <div class="field">
+      <dt>{escape(label)}</dt>
+      <dd class="editable" data-field="{escape(field_name, quote=True)}" data-kind="select" data-original="{escape(value, quote=True)}" tabindex="0" title="Double-click to edit">
+        <span class="editable-display">{escape(_value(value))}</span>
+        <select class="editable-control">
+          {_job_status_options(value)}
+        </select>
+      </dd>
+    </div>
+    """
+
+
+def _editable_title(job: Job) -> str:
+    raw_value = _input_value(job.title)
+    return f"""
+    <h1 class="editable editable-heading" data-field="title" data-kind="text" data-original="{escape(raw_value, quote=True)}" tabindex="0" title="Double-click to edit">
+      <span class="editable-display">{escape(job.title)}</span>
+      <input class="editable-control" value="{escape(raw_value, quote=True)}" maxlength="300" required>
+    </h1>
+    """
+
+
+def _editable_description(job: Job) -> str:
+    raw_value = _input_value(job.description_raw)
+    display = (
+        f"<pre>{escape(job.description_raw)}</pre>"
+        if job.description_raw
+        else '<p class="empty">No description captured yet.</p>'
+    )
+    return f"""
+    <div class="editable editable-description" data-field="description_raw" data-kind="textarea" data-original="{escape(raw_value, quote=True)}" tabindex="0" title="Double-click to edit">
+      <div class="editable-display">{display}</div>
+      <textarea class="editable-control description-editor" rows="22">{escape(raw_value)}</textarea>
+    </div>
+    """
+
+
 def _timeline_event(event: Communication) -> str:
     occurred_at = event.occurred_at or event.created_at
     follow_up = (
@@ -185,102 +250,6 @@ def _new_job_form() -> str:
       </label>
       <button type="submit">Create job</button>
     </form>
-    """
-
-
-def _edit_identity_form(job: Job) -> str:
-    return f"""
-    <details class="edit-panel">
-      <summary>Edit job and status</summary>
-      <form class="job-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/edit">
-        <label>
-          Title
-          <input name="title" value="{escape(_input_value(job.title), quote=True)}" maxlength="300" required>
-        </label>
-        <label>
-          Company
-          <input name="company" value="{escape(_input_value(job.company), quote=True)}" maxlength="300">
-        </label>
-        <label>
-          Status
-          <select name="job_status">
-            {_job_status_options(job.status)}
-          </select>
-        </label>
-        <button type="submit">Save job and status</button>
-      </form>
-    </details>
-    """
-
-
-def _edit_source_form(job: Job) -> str:
-    return f"""
-    <details class="edit-panel">
-      <summary>Edit source and links</summary>
-      <form class="job-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/edit">
-        <label>
-          Source
-          <input name="source" value="{escape(_input_value(job.source), quote=True)}" maxlength="100">
-        </label>
-        <label>
-          Source URL
-          <input name="source_url" value="{escape(_input_value(job.source_url), quote=True)}" type="url" maxlength="2048">
-        </label>
-        <label>
-          Apply URL
-          <input name="apply_url" value="{escape(_input_value(job.apply_url), quote=True)}" type="url" maxlength="2048">
-        </label>
-        <button type="submit">Save source and links</button>
-      </form>
-    </details>
-    """
-
-
-def _edit_working_terms_form(job: Job) -> str:
-    return f"""
-    <details class="edit-panel">
-      <summary>Edit location and salary</summary>
-      <form class="job-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/edit">
-        <label>
-          Location
-          <input name="location" value="{escape(_input_value(job.location), quote=True)}" maxlength="300">
-        </label>
-        <label>
-          Remote policy
-          <input name="remote_policy" value="{escape(_input_value(job.remote_policy), quote=True)}" maxlength="50">
-        </label>
-        <div class="inline-fields">
-          <label>
-            Salary min
-            <input name="salary_min" value="{escape(_input_value(job.salary_min), quote=True)}">
-          </label>
-          <label>
-            Salary max
-            <input name="salary_max" value="{escape(_input_value(job.salary_max), quote=True)}">
-          </label>
-          <label>
-            Currency
-            <input name="salary_currency" value="{escape(_input_value(job.salary_currency), quote=True)}" maxlength="3">
-          </label>
-        </div>
-        <button type="submit">Save location and salary</button>
-      </form>
-    </details>
-    """
-
-
-def _edit_description_form(job: Job) -> str:
-    return f"""
-    <details class="edit-panel">
-      <summary>Edit description</summary>
-      <form class="job-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/edit">
-        <label>
-          Description
-          <textarea class="description-editor" name="description_raw" rows="18">{escape(_input_value(job.description_raw))}</textarea>
-        </label>
-        <button type="submit">Save description</button>
-      </form>
-    </details>
     """
 
 
@@ -689,18 +658,6 @@ def render_job_detail(job: Job) -> str:
         key=lambda event: event.occurred_at or event.created_at,
         reverse=True,
     )
-    salary = "Not set"
-    if job.salary_min is not None or job.salary_max is not None:
-        low = _value(job.salary_min) if job.salary_min is not None else ""
-        high = _value(job.salary_max) if job.salary_max is not None else ""
-        currency = job.salary_currency or ""
-        salary = f"{currency} {low}-{high}".strip(" -")
-
-    description = (
-        f"<pre>{escape(job.description_raw)}</pre>"
-        if job.description_raw
-        else '<p class="empty">No description captured yet.</p>'
-    )
 
     return f"""<!doctype html>
 <html lang="en">
@@ -826,31 +783,6 @@ def render_job_detail(job: Job) -> str:
       margin-top: 6px;
     }}
 
-    .edit-panel {{
-      border-top: 1px solid var(--line);
-      margin-top: 14px;
-      padding-top: 12px;
-    }}
-
-    .edit-panel summary {{
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--accent-strong);
-      cursor: pointer;
-      display: inline-block;
-      font-weight: 700;
-      list-style: none;
-      padding: 7px 10px;
-    }}
-
-    .edit-panel summary::-webkit-details-marker {{
-      display: none;
-    }}
-
-    .edit-panel[open] summary {{
-      margin-bottom: 12px;
-    }}
-
     .layout {{
       display: grid;
       gap: 18px;
@@ -888,6 +820,46 @@ def render_job_detail(job: Job) -> str:
       overflow-wrap: anywhere;
     }}
 
+    .editable {{
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: text;
+      margin: -5px;
+      padding: 5px;
+    }}
+
+    .editable:hover,
+    .editable:focus {{
+      border-color: var(--line);
+      outline: 0;
+    }}
+
+    .editable.is-editing {{
+      background: #ffffff;
+      border-color: var(--accent);
+      cursor: default;
+    }}
+
+    .editable-control {{
+      display: none;
+    }}
+
+    .editable.is-editing > .editable-control,
+    .editable.is-editing .editable-control {{
+      display: block;
+    }}
+
+    .editable.is-editing > .editable-display,
+    .editable.is-editing .editable-display {{
+      display: none;
+    }}
+
+    .editable-heading .editable-control {{
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }}
+
     pre {{
       font-family: inherit;
       line-height: 1.5;
@@ -898,6 +870,44 @@ def render_job_detail(job: Job) -> str:
 
     .description-editor {{
       min-height: 420px;
+    }}
+
+    .savebar {{
+      align-items: center;
+      background: var(--ink);
+      border-radius: 8px;
+      bottom: 18px;
+      color: #ffffff;
+      display: none;
+      gap: 12px;
+      left: 50%;
+      padding: 10px 12px;
+      position: fixed;
+      transform: translateX(-50%);
+      z-index: 20;
+    }}
+
+    .savebar.is-visible {{
+      display: flex;
+    }}
+
+    .savebar p {{
+      font-weight: 700;
+    }}
+
+    .savebar .secondary {{
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+    }}
+
+    .timeline-panel summary {{
+      color: var(--accent-strong);
+      cursor: pointer;
+      font-weight: 700;
+    }}
+
+    .timeline-panel ol {{
+      margin-top: 12px;
     }}
 
     ol {{
@@ -945,7 +955,7 @@ def render_job_detail(job: Job) -> str:
   <main>
     <header class="topbar">
       <div>
-        <h1>{escape(job.title)}</h1>
+        {_editable_title(job)}
         <p class="subhead">{escape(job.company or "Company not set")} · {escape(job.status)}</p>
       </div>
       <nav>
@@ -960,34 +970,26 @@ def render_job_detail(job: Job) -> str:
       <div>
         <section>
           <h2>Description</h2>
-          {description}
-          {_edit_description_form(job)}
+          {_editable_description(job)}
         </section>
       </div>
       <aside>
         <section>
           <h2>Details</h2>
           <dl>
-            {_field("Status", job.status)}
+            {_editable_select("Status", "status", job.status)}
             {_field("Board position", job.board_position)}
-            {_field("Company", job.company)}
-            {_field("Location", job.location)}
-            {_field("Remote policy", job.remote_policy)}
-            {_field("Salary", salary)}
-            {_field("Source", job.source)}
+            {_editable_text("Company", "company", job.company)}
+            {_editable_text("Location", "location", job.location)}
+            {_editable_text("Remote policy", "remote_policy", job.remote_policy)}
+            {_editable_text("Salary min", "salary_min", job.salary_min)}
+            {_editable_text("Salary max", "salary_max", job.salary_max)}
+            {_editable_text("Currency", "salary_currency", job.salary_currency)}
+            {_editable_text("Source", "source", job.source)}
             {_field("Captured", job.captured_at)}
-            <div class="field">
-              <dt>Source URL</dt>
-              <dd>{_link("Open source", job.source_url)}</dd>
-            </div>
-            <div class="field">
-              <dt>Apply URL</dt>
-              <dd>{_link("Open apply link", job.apply_url)}</dd>
-            </div>
+            {_editable_url("Source URL", "source_url", job.source_url, "Open source")}
+            {_editable_url("Apply URL", "apply_url", job.apply_url, "Open apply link")}
           </dl>
-          {_edit_identity_form(job)}
-          {_edit_source_form(job)}
-          {_edit_working_terms_form(job)}
         </section>
         <section>
           <h2>Application</h2>
@@ -1026,12 +1028,136 @@ def render_job_detail(job: Job) -> str:
           {_note_form(job)}
         </section>
         <section>
-          <h2>Timeline</h2>
-          {_timeline(events)}
+          <details class="timeline-panel">
+            <summary>Journal</summary>
+            {_timeline(events)}
+          </details>
         </section>
       </aside>
     </div>
+    <div id="edit-savebar" class="savebar" aria-live="polite">
+      <p>Unsaved changes</p>
+      <button id="save-inline-edits" type="button">Save</button>
+      <button id="cancel-inline-edits" class="secondary" type="button">Cancel</button>
+    </div>
   </main>
+  <script>
+    (() => {{
+      const jobUuid = "{escape(job.uuid, quote=True)}";
+      const dirty = new Map();
+      const savebar = document.getElementById("edit-savebar");
+      const saveButton = document.getElementById("save-inline-edits");
+      const cancelButton = document.getElementById("cancel-inline-edits");
+
+      function controlFor(editor) {{
+        return editor.querySelector(".editable-control");
+      }}
+
+      function displayFor(editor) {{
+        return editor.querySelector(".editable-display");
+      }}
+
+      function showSavebar() {{
+        savebar.classList.toggle("is-visible", dirty.size > 0);
+      }}
+
+      function activate(editor) {{
+        editor.classList.add("is-editing");
+        const control = controlFor(editor);
+        if (!control) {{
+          return;
+        }}
+        control.focus();
+        if (typeof control.select === "function") {{
+          control.select();
+        }}
+      }}
+
+      function markDirty(editor) {{
+        const control = controlFor(editor);
+        if (!control) {{
+          return;
+        }}
+        const field = editor.dataset.field;
+        const original = editor.dataset.original || "";
+        const value = control.value;
+        if (value === original) {{
+          dirty.delete(field);
+        }} else {{
+          dirty.set(field, {{ editor, value }});
+        }}
+        showSavebar();
+      }}
+
+      function updateDisplay(editor) {{
+        const control = controlFor(editor);
+        const display = displayFor(editor);
+        if (!control || !display) {{
+          return;
+        }}
+        const value = control.value.trim();
+        display.textContent = value || "Not set";
+      }}
+
+      function normalize(field, value) {{
+        if (field === "title" || field === "status") {{
+          return value;
+        }}
+        return value.trim() === "" ? null : value;
+      }}
+
+      document.querySelectorAll(".editable").forEach((editor) => {{
+        editor.addEventListener("dblclick", (event) => {{
+          event.preventDefault();
+          activate(editor);
+        }});
+        editor.addEventListener("keydown", (event) => {{
+          if (event.key === "Enter" && editor.dataset.kind !== "textarea") {{
+            event.preventDefault();
+            editor.classList.remove("is-editing");
+            updateDisplay(editor);
+          }}
+          if (event.key === "Escape") {{
+            window.location.reload();
+          }}
+        }});
+        const control = controlFor(editor);
+        if (control) {{
+          control.addEventListener("input", () => markDirty(editor));
+          control.addEventListener("change", () => {{
+            markDirty(editor);
+            updateDisplay(editor);
+          }});
+          control.addEventListener("blur", () => updateDisplay(editor));
+        }}
+      }});
+
+      saveButton.addEventListener("click", async () => {{
+        const payload = {{}};
+        dirty.forEach((entry, field) => {{
+          payload[field] = normalize(field, entry.value);
+        }});
+        saveButton.disabled = true;
+        try {{
+          const response = await fetch(`/api/jobs/${{jobUuid}}`, {{
+            method: "PATCH",
+            headers: {{ "Content-Type": "application/json" }},
+            body: JSON.stringify(payload),
+          }});
+          if (!response.ok) {{
+            const error = await response.json().catch(() => ({{ detail: "Unable to save changes" }}));
+            throw new Error(error.detail || "Unable to save changes");
+          }}
+          window.location.reload();
+        }} catch (error) {{
+          alert(error.message);
+          saveButton.disabled = false;
+        }}
+      }});
+
+      cancelButton.addEventListener("click", () => window.location.reload());
+    }})();
+  </script>
 </body>
 </html>"""
 

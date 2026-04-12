@@ -79,11 +79,12 @@ def test_job_detail_renders_owned_job_and_timeline(tmp_path: Path, monkeypatch) 
         assert f'action="/jobs/{job_uuid}/interviews"' in response.text
         assert f'action="/jobs/{job_uuid}/archive"' in response.text
         assert f'action="/jobs/{job_uuid}/artefacts"' in response.text
-        assert f'action="/jobs/{job_uuid}/edit"' in response.text
-        assert "Edit description" in response.text
-        assert "Edit job and status" in response.text
-        assert "Edit source and links" in response.text
-        assert "Edit location and salary" in response.text
+        assert 'data-field="title"' in response.text
+        assert 'data-field="description_raw"' in response.text
+        assert 'data-field="status"' in response.text
+        assert 'id="edit-savebar"' in response.text
+        assert '<summary>Journal</summary>' in response.text
+        assert "<details class=\"timeline-panel\">" in response.text
         assert "Status changed from applied to interviewing" in response.text
         assert "Job status changed from applied to interviewing." in response.text
     finally:
