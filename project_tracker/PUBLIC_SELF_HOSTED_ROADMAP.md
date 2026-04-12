@@ -477,6 +477,8 @@ Current repo context:
 
 - This checkout currently does not contain the previously referenced `extensions/` tree.
 - A bookmarklet setup page exists at `/api/capture/bookmarklet` as the first browser capture path.
+- User-owned API token creation and revocation exists in `/settings`, so bookmarklet setup can be
+  completed without terminal commands.
 - Chrome, Firefox, and Safari extension work should either restore the prior extension source or
   scaffold a new extension against the stable capture API.
 
@@ -498,7 +500,7 @@ Tasks:
   - raw extraction metadata.
 - Add extension settings UI for:
   - tracker base URL.
-  - API token.
+  - API token. Done for bookmarklet setup through `/settings` plus `/api/capture/bookmarklet`.
   - default stage.
   - capture selected text vs full page.
 - Add supported extractor strategy:

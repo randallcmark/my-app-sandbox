@@ -12,6 +12,19 @@ Token secrets are shown once when created. The database stores only a hash.
 
 ## Create A Token
 
+### Browser
+
+Open Settings while logged in:
+
+```text
+http://127.0.0.1:8000/settings
+```
+
+Use `Create capture token`. The token secret is shown once. Paste it into Capture setup before
+leaving the page.
+
+### Terminal
+
 Log in with a browser session first:
 
 ```bash
@@ -47,6 +60,10 @@ Store the `token` value somewhere safe. It cannot be retrieved again.
 
 ## Revoke A Token
 
+In the browser, open Settings and use `Revoke` next to the token.
+
+Terminal:
+
 ```bash
 curl -i \
   -X DELETE \
@@ -61,7 +78,7 @@ Revocation is owner-scoped. A logged-in user cannot revoke another user's token.
 The first browser capture path is a generated bookmarklet. It is useful before the packaged browser
 extension is wired up, and it works with the same `capture:jobs` bearer token.
 
-1. Create a token with the `capture:jobs` scope.
+1. Create a token with the `capture:jobs` scope from Settings.
 2. Open the setup page while logged in:
 
 ```text

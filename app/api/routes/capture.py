@@ -188,8 +188,8 @@ def render_bookmarklet_setup(request: Request, user: User) -> str:
 
     <section>
       <h2>1. Create a capture token</h2>
-      <p>Create a scoped API token named Browser bookmarklet from the API docs or terminal. Paste the one-time token below. It is only used in your browser to generate the bookmarklet link.</p>
-      <p><a href="/docs#/auth/create_api_token_auth_api_tokens_post">Open token API docs</a></p>
+      <p>Create a scoped API token named Browser bookmarklet from Settings. Paste the one-time token below. It is only used in your browser to generate the bookmarklet link.</p>
+      <p><a href="/settings">Open Settings</a></p>
     </section>
 
     <section>
