@@ -475,10 +475,10 @@ Jobseekers discover opportunities across many job boards and ATS pages. Capture 
 
 Current repo context:
 
-- Extension source exists under `extensions/extensions-src/clipper/Resources`.
-- Chrome and Firefox build targets exist under `extensions/build-targets`.
-- Safari wrapper resources exist under `extensions/native/safari-wrapper`.
-- `extensions/README.md` describes sync and loading instructions.
+- This checkout currently does not contain the previously referenced `extensions/` tree.
+- A bookmarklet setup page exists at `/api/capture/bookmarklet` as the first browser capture path.
+- Chrome, Firefox, and Safari extension work should either restore the prior extension source or
+  scaffold a new extension against the stable capture API.
 
 Tasks:
 
@@ -513,7 +513,9 @@ Tasks:
   - auth failed.
   - unsupported page.
   - duplicate job found.
-- Add a bookmarklet as a low-friction alternative before polished extension packaging.
+- Add a bookmarklet as a low-friction alternative before polished extension packaging. Done with
+  `/api/capture/bookmarklet`, token-authenticated capture, JSON-LD fallback extraction, selected
+  text, and body text fallback.
 - Decide extension packaging policy:
   - developer sideload only for first public version, or
   - packaged browser store submissions.

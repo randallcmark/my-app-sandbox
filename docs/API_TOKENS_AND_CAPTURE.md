@@ -56,6 +56,34 @@ curl -i \
 
 Revocation is owner-scoped. A logged-in user cannot revoke another user's token.
 
+## Browser Bookmarklet
+
+The first browser capture path is a generated bookmarklet. It is useful before the packaged browser
+extension is wired up, and it works with the same `capture:jobs` bearer token.
+
+1. Create a token with the `capture:jobs` scope.
+2. Open the setup page while logged in:
+
+```text
+http://127.0.0.1:8000/api/capture/bookmarklet
+```
+
+3. Paste the one-time token into the setup page.
+4. Drag the `Capture job` link to your bookmarks bar.
+5. Open a job page and click the bookmarklet.
+
+The bookmarklet sends:
+
+- current page URL as `source_url` and `apply_url`;
+- page title or first `h1` as `title`;
+- selected text as `selected_text`;
+- page text as fallback `description`;
+- JSON-LD `JobPosting` title, company, location, and description when present;
+- extraction metadata including page title, hostname source platform, body text sample, and capture time.
+
+Because the bookmarklet runs on third-party job sites, the app allows CORS preflight requests for
+token-authenticated capture. The capture route still requires the bearer token.
+
 ## Capture A Job
 
 Use the token as a bearer token:

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Cookie, Depends, FastAPI
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
+from starlette.middleware.cors import CORSMiddleware
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.board import router as board_router
@@ -18,6 +19,12 @@ from app.db.session import get_db_session
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+    )
 
     @app.get("/", include_in_schema=False)
     def root(

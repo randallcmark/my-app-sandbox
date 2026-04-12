@@ -474,6 +474,7 @@ def render_board(user: User, jobs: list[Job], *, workflow: str = "in_progress") 
       </div>
       <nav>
         <a class="docs-link" href="/jobs/new">Add job</a>
+        <a class="docs-link" href="/api/capture/bookmarklet">Capture setup</a>
         <a class="docs-link" href="/docs">API docs</a>
         <form method="post" action="/logout">
           <button type="submit">Sign out</button>

@@ -116,3 +116,60 @@ def test_capture_job_requires_bearer_token(tmp_path: Path, monkeypatch) -> None:
         assert response.status_code == 401
     finally:
         app.dependency_overrides.clear()
+
+
+def test_capture_bookmarklet_setup_requires_login(tmp_path: Path, monkeypatch) -> None:
+    client, _ = build_client(tmp_path, monkeypatch)
+    try:
+        response = client.get("/api/capture/bookmarklet")
+
+        assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_capture_bookmarklet_setup_renders_generator(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            create_local_user(db, email="jobseeker@example.com", password="password")
+            db.commit()
+
+        login_response = client.post(
+            "/auth/login",
+            json={"email": "jobseeker@example.com", "password": "password"},
+        )
+        assert login_response.status_code == 200
+
+        response = client.get("/api/capture/bookmarklet")
+
+        assert response.status_code == 200
+        assert "Capture setup" in response.text
+        assert "Capture job" in response.text
+        assert "ats_..." in response.text
+        assert "/api/capture/jobs" in response.text
+        assert "JobPosting" in response.text
+        assert "PASTE_TOKEN_HERE" in response.text
+        assert "javascript:javascript:" not in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_capture_endpoint_allows_bookmarklet_cors_preflight(tmp_path: Path, monkeypatch) -> None:
+    client, _ = build_client(tmp_path, monkeypatch)
+    try:
+        response = client.options(
+            "/api/capture/jobs",
+            headers={
+                "Origin": "https://jobs.example.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "*"
+        assert "POST" in response.headers["access-control-allow-methods"]
+        assert "Authorization" in response.headers["access-control-allow-headers"]
+    finally:
+        app.dependency_overrides.clear()
