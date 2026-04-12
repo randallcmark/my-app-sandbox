@@ -17,25 +17,33 @@ Last planning update: 2026-04-12
 
 ## Current Checkpoint
 
-As of 2026-04-11, the Stage 3 board workflow is browser-tested through:
+As of 2026-04-12, the Stage 3 board workflow is browser-tested through:
 
 - Login/logout.
 - Manual job creation from `/jobs/new`.
 - Board workflow dropdown views for prospects, in progress, outcomes, all active, and archived jobs.
-- Drag/drop and `Move to column` dropdown stage movement.
-- Job detail notes, status-change timeline, mark applied, schedule interview, archive, and unarchive.
+- Focused list views for prospects, outcomes, and archived jobs.
+- Prospects quick-triage actions for interested and archive.
+- Drag/drop and `Move to column` dropdown stage movement in kanban views.
+- Job detail workflow status transition control for moving across focused workflow groups.
+- Job detail notes, status-change journal, mark applied, schedule interview, archive, and unarchive.
 - Job detail editing for core job fields.
+- Job detail journal timestamps rendered in the browser's local timezone.
 - Job-level artefact upload/download.
 - Stage-aging, stale-card, and follow-up due indicators on board cards.
+- Firefox extension capture with readable-description extraction still needing more formatting polish.
+- Docker Compose deployment path with migration and first-admin setup documented.
 
 Known next product focus:
 
 - Board filter controls for company, source, remote policy, keywords, and date added.
 - UI polish for the board and job detail page now that the core workflow is usable.
-- Prospects may become a row-list triage view rather than kanban cards, with quick action to mark
-  interesting jobs for a focused interested/progression workflow.
 - Editing still needs to expand beyond core job fields into notes, applications, interviews, and
   artefact metadata.
+- Admin UI for user/token/system setup so first-run and capture setup do not depend on command-line
+  steps.
+- Deployment quality-of-life for HTTPS/reverse-proxy guidance, backups, health checks, and packaged
+  upgrade commands.
 - Future job detail overlay/modal instead of full navigation away from the board.
 
 Known bugs:

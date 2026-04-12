@@ -134,14 +134,71 @@ EMAIL=you@example.com make create-admin
 Build and run locally:
 
 ```bash
-docker compose up --build
+docker compose up -d --build
+```
+
+Apply database migrations inside the container:
+
+```bash
+docker compose exec app alembic upgrade head
+```
+
+Create the first local admin user:
+
+```bash
+docker compose exec app python -m app.cli users create-admin --email you@example.com
 ```
 
 Then open:
 
 ```text
-http://localhost:8000/health
+http://localhost:8000/login
 ```
+
+For a NAS or homelab deployment, keep `/app/data` on persistent storage. That directory contains
+the SQLite database and uploaded artefacts. The bundled Compose file uses a named volume:
+
+```yaml
+volumes:
+  - app_data:/app/data
+```
+
+On QNAP Container Station or similar systems, an explicit bind mount can make backups easier:
+
+```yaml
+volumes:
+  - /share/Container/application_tracker/data:/app/data
+```
+
+Use a non-default `SESSION_SECRET_KEY` before creating real data:
+
+```bash
+openssl rand -hex 32
+```
+
+Set it in `.env` next to `docker-compose.yml`:
+
+```env
+APP_ENV=development
+AUTH_MODE=local
+SESSION_SECRET_KEY=replace-with-the-generated-secret
+PUBLIC_BASE_URL=http://your-nas-hostname-or-ip:8000
+DATABASE_URL=sqlite:////app/data/app.db
+STORAGE_BACKEND=local
+LOCAL_STORAGE_PATH=/app/data/artefacts
+```
+
+After pulling updates, rebuild and rerun migrations:
+
+```bash
+git pull
+docker compose up -d --build
+docker compose exec app alembic upgrade head
+```
+
+For `APP_ENV=production`, `PUBLIC_BASE_URL` must be HTTPS and the default session secret is
+rejected. Put the app behind QNAP's reverse proxy, another reverse proxy, or a TLS terminator, then
+set `PUBLIC_BASE_URL=https://...`.
 
 ## Repository Policy
 
