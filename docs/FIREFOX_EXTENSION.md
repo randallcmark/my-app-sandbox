@@ -39,6 +39,7 @@ extensions/firefox/manifest.json
 ```text
 Tracker URL: http://127.0.0.1:8000
 Capture token: ats_...
+Capture mode: Full page and selected text
 ```
 
 ## Manual Smoke Test
@@ -68,6 +69,29 @@ http://127.0.0.1:8000/board?workflow=prospects
 - description from JSON-LD.
 
 Duplicate capture of the same page should update the existing job and report `Updated`.
+
+The popup includes an `Open captured job` link after a successful capture.
+
+## Capture Modes
+
+- `Full page and selected text`: sends selected text, visible page text, and raw HTML.
+- `Selected text only`: sends only selected text as the description and omits raw HTML/body text.
+- `Structured page data only`: sends raw HTML for backend JSON-LD extraction and does not use body
+  text as the description fallback.
+
+## Package Locally
+
+Create a repeatable zip package:
+
+```bash
+make package-firefox-extension
+```
+
+The package is written to:
+
+```text
+dist/application-tracker-firefox.zip
+```
 
 ## Current Limits
 

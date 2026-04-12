@@ -20,6 +20,14 @@
         Capture token
         <input id="capture-token" name="captureToken" placeholder="ats_..." autocomplete="off" required>
       </label>
+      <label>
+        Capture mode
+        <select id="capture-mode" name="captureMode">
+          <option value="full">Full page and selected text</option>
+          <option value="selection">Selected text only</option>
+          <option value="structured">Structured page data only</option>
+        </select>
+      </label>
       <button type="submit">Save settings</button>
     </form>
 

@@ -69,6 +69,16 @@ input {
   width: 100%;
 }
 
+select {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  min-height: 38px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
 button {
   background: var(--accent);
   border: 0;
@@ -98,5 +108,10 @@ button.secondary {
 
 .error {
   color: var(--error);
+  font-weight: 700;
+}
+
+a {
+  color: var(--accent-strong);
   font-weight: 700;
 }

@@ -29,13 +29,29 @@ def test_firefox_extension_manifest_points_to_required_files() -> None:
 def test_firefox_extension_posts_to_capture_api_with_bearer_token() -> None:
     popup_js = (EXTENSION_DIR / "popup.js").read_text()
     capture_js = (EXTENSION_DIR / "capture-page.js").read_text()
+    options_html = (EXTENSION_DIR / "options.html").read_text()
+    popup_html = (EXTENSION_DIR / "popup.html").read_text()
 
     assert "/api/capture/jobs" in popup_js
     assert "Authorization" in popup_js
     assert "Bearer" in popup_js
+    assert "Open captured job" in popup_js
+    assert "Tracker unreachable" in popup_js
+    assert "Capture token was rejected" in popup_js
     assert "raw_html" in capture_js
+    assert "capture_mode" in capture_js
     assert "application/ld+json" in capture_js
     assert "firefox_extension" in capture_js
+    assert "capture-mode" in options_html
+    assert "Selected text only" in options_html
+    assert "result-link" in popup_html
+
+
+def test_makefile_has_firefox_package_target() -> None:
+    makefile = Path("Makefile").read_text()
+
+    assert "package-firefox-extension" in makefile
+    assert "application-tracker-firefox.zip" in makefile
 
 
 def test_firefox_fixture_contains_jsonld_job_posting() -> None:

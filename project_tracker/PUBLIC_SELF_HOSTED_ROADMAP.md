@@ -502,7 +502,7 @@ Tasks:
   - tracker base URL. Done for experimental Firefox extension.
   - API token. Done for bookmarklet setup and experimental Firefox extension.
   - default stage.
-  - capture selected text vs full page.
+  - capture selected text vs full page. Done for experimental Firefox extension capture modes.
 - Add supported extractor strategy:
   - generic DOM extraction.
   - JSON-LD extraction.
@@ -515,7 +515,8 @@ Tasks:
   - auth failed.
   - unsupported page.
   - duplicate job found.
-- Add experimental Firefox extension. Done with temporary-load WebExtension source and docs.
+- Add experimental Firefox extension. Done with temporary-load WebExtension source, capture modes,
+  popup diagnostics, captured-job link, package target, and docs.
 - Add a bookmarklet as a low-friction alternative before polished extension packaging. Done with
   `/api/capture/bookmarklet`, token-authenticated capture, JSON-LD fallback extraction, selected
   text, and body text fallback.
