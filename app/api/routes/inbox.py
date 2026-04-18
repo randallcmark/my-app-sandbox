@@ -148,13 +148,13 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
       --warn: #a43d2b;
     }}
 
@@ -213,7 +213,7 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
 
     a {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     .inbox-list {{
@@ -253,7 +253,7 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
       cursor: pointer;
       display: inline-flex;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       padding: 8px 10px;
       text-decoration: none;
     }}
@@ -337,13 +337,13 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
       --warn: #a43d2b;
     }}
 
@@ -391,7 +391,7 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
 
     a {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     form {{
@@ -405,7 +405,7 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
 
     label {{
       display: grid;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 
@@ -430,7 +430,7 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
       cursor: pointer;
       display: inline-flex;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       padding: 8px 10px;
       text-decoration: none;
     }}

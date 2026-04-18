@@ -7,12 +7,15 @@ from sqlalchemy import create_engine, inspect, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.db.models.ai_output import AiOutput
+from app.db.models.ai_provider_setting import AiProviderSetting
 from app.db.models.application import Application
 from app.db.models.artefact import Artefact
 from app.db.models.communication import Communication
 from app.db.models.email_intake import EmailIntake
 from app.db.models.interview_event import InterviewEvent
 from app.db.models.job import Job
+from app.db.models.job_artefact_link import JobArtefactLink
 from app.db.models.user import User
 from app.db.models.user_profile import UserProfile
 
@@ -37,6 +40,8 @@ def test_baseline_migration_creates_core_tables(tmp_path: Path, monkeypatch) -> 
 
     assert {
         "alembic_version",
+        "ai_outputs",
+        "ai_provider_settings",
         "api_tokens",
         "applications",
         "artefacts",
@@ -44,6 +49,7 @@ def test_baseline_migration_creates_core_tables(tmp_path: Path, monkeypatch) -> 
         "communications",
         "email_intakes",
         "interview_events",
+        "job_artefact_links",
         "jobs",
         "user_profiles",
         "users",
@@ -67,6 +73,34 @@ def test_baseline_migration_creates_core_tables(tmp_path: Path, monkeypatch) -> 
         "body_html",
         "source_provider",
     }.issubset(email_intake_columns)
+
+    artefact_columns = {column["name"] for column in inspector.get_columns("artefacts")}
+    assert {"purpose", "version_label", "notes", "outcome_context"}.issubset(artefact_columns)
+
+    job_artefact_link_columns = {
+        column["name"] for column in inspector.get_columns("job_artefact_links")
+    }
+    assert {"owner_user_id", "job_id", "artefact_id"}.issubset(job_artefact_link_columns)
+
+    ai_output_columns = {column["name"] for column in inspector.get_columns("ai_outputs")}
+    assert {
+        "owner_user_id",
+        "job_id",
+        "artefact_id",
+        "output_type",
+        "body",
+        "source_context",
+        "provider",
+        "model_name",
+        "status",
+    }.issubset(ai_output_columns)
+
+    ai_provider_columns = {
+        column["name"] for column in inspector.get_columns("ai_provider_settings")
+    }
+    assert {"owner_user_id", "provider", "base_url", "model_name", "is_enabled"}.issubset(
+        ai_provider_columns
+    )
 
     profile_columns = {column["name"] for column in inspector.get_columns("user_profiles")}
     assert {
@@ -162,10 +196,44 @@ def test_core_models_can_persist_lifecycle_records(tmp_path: Path, monkeypatch) 
             job_id=job.id,
             application_id=application.id,
             kind="resume",
+            purpose="Tailored resume",
+            version_label="v1",
+            notes="Used for application prep.",
+            outcome_context="unknown",
             filename="resume.pdf",
             storage_key="jobs/example/resume.pdf",
         )
         session.add_all([communication, artefact])
+        session.flush()
+        session.add(
+            JobArtefactLink(
+                owner_user_id=user.id,
+                job_id=job.id,
+                artefact_id=artefact.id,
+            )
+        )
+        session.add(
+            AiProviderSetting(
+                owner_user_id=user.id,
+                provider="openai",
+                model_name="gpt-example",
+                is_enabled=False,
+            )
+        )
+        session.add(
+            AiOutput(
+                owner_user_id=user.id,
+                job_id=job.id,
+                artefact_id=artefact.id,
+                output_type="fit_summary",
+                title="Fit summary",
+                body="Strong alignment with product leadership.",
+                source_context={"job_uuid": job.uuid},
+                provider="openai",
+                model_name="gpt-example",
+                status="active",
+            )
+        )
         session.commit()
 
     with Session(engine) as session:
@@ -182,3 +250,6 @@ def test_core_models_can_persist_lifecycle_records(tmp_path: Path, monkeypatch) 
         assert stored_job.communications[0].event_type == "note"
         assert stored_job.communications[0].follow_up_at is not None
         assert stored_job.artefacts[0].storage_key == "jobs/example/resume.pdf"
+        assert stored_job.artefact_links[0].artefact.purpose == "Tailored resume"
+        assert stored_job.ai_outputs[0].output_type == "fit_summary"
+        assert stored_job.owner.ai_provider_settings[0].provider == "openai"

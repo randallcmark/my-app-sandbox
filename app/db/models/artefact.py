@@ -17,6 +17,10 @@ class Artefact(IdMixin, TimestampMixin, Base):
         ForeignKey("interview_events.id"), index=True, nullable=True
     )
     kind: Mapped[str] = mapped_column(String(100), nullable=False)
+    purpose: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    version_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome_context: Mapped[str | None] = mapped_column(String(300), nullable=True)
     filename: Mapped[str] = mapped_column(String(500), nullable=False)
     content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
@@ -25,6 +29,7 @@ class Artefact(IdMixin, TimestampMixin, Base):
 
     owner = relationship("User", back_populates="artefacts")
     job = relationship("Job", back_populates="artefacts")
+    job_links = relationship("JobArtefactLink", back_populates="artefact", cascade="all, delete-orphan")
     application = relationship("Application", back_populates="artefacts")
     interview_event = relationship("InterviewEvent", back_populates="artefacts")
-
+    ai_outputs = relationship("AiOutput", back_populates="artefact")

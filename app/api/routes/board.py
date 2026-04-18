@@ -1012,13 +1012,13 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
+      --page: #f9f9f7;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
       --panel: #ffffff;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
       --warn: #a43d2b;
       --danger: #b42318;
       --success: #16703f;
@@ -1077,7 +1077,7 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
 
     .docs-link {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     .workflow-nav {{
@@ -1240,13 +1240,13 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
 
     .stage-age.stale {{
       color: var(--warn);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     .follow-up {{
       color: var(--accent-strong);
       font-size: 0.88rem;
-      font-weight: 700;
+      font-weight: 500;
       line-height: 1.35;
     }}
 
@@ -1264,7 +1264,7 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     .card-meta a,
     .row-meta a {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     .job-card h3 a,
@@ -1282,7 +1282,7 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
       color: var(--muted);
       flex: 0 0 auto;
       font-size: 0.78rem;
-      font-weight: 700;
+      font-weight: 500;
       line-height: 1;
       padding: 6px 8px;
     }}
@@ -1309,7 +1309,7 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     label {{
       display: grid;
       font-size: 0.88rem;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 
@@ -1325,7 +1325,7 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
       background: var(--accent);
       color: #ffffff;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     button:hover {{
@@ -1373,7 +1373,7 @@ def render_classic_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
 
     .notice {{
       color: var(--warn);
-      font-weight: 700;
+      font-weight: 500;
       min-height: 24px;
     }}
 

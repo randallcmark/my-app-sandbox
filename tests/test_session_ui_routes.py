@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.auth.users import create_local_user
 from app.core.config import settings
+from app.db.models.ai_provider_setting import AiProviderSetting
 from app.db.models.api_token import ApiToken
 from app.db.models.job import Job
 from app.db.models.user import User
@@ -176,6 +177,80 @@ def test_settings_requires_login(tmp_path: Path, monkeypatch) -> None:
         response = client.get("/settings")
 
         assert response.status_code == 401
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_settings_shows_ai_readiness_placeholders(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            create_local_user(db, email="jobseeker@example.com", password="password")
+            db.commit()
+
+        client.post(
+            "/login",
+            data={"email": "jobseeker@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.get("/settings")
+
+        assert response.status_code == 200
+        assert "AI readiness" in response.text
+        assert "OpenAI" in response.text
+        assert "Anthropic" in response.text
+        assert "OpenAI-compatible local endpoint" in response.text
+        assert "disabled by default" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_settings_updates_ai_provider_placeholder(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            create_local_user(db, email="jobseeker@example.com", password="password")
+            create_local_user(db, email="other@example.com", password="password")
+            db.commit()
+
+        client.post(
+            "/login",
+            data={"email": "jobseeker@example.com", "password": "password"},
+            follow_redirects=False,
+        )
+
+        response = client.post(
+            "/settings/ai-provider",
+            data={
+                "provider": "openai_compatible",
+                "label": "Local endpoint",
+                "base_url": "http://localhost:11434/v1",
+                "model_name": "local-model",
+                "is_enabled": "true",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/settings#ai"
+
+        with session_local() as db:
+            setting = db.scalar(select(AiProviderSetting))
+
+            assert setting is not None
+            assert setting.owner.email == "jobseeker@example.com"
+            assert setting.provider == "openai_compatible"
+            assert setting.label == "Local endpoint"
+            assert setting.base_url == "http://localhost:11434/v1"
+            assert setting.model_name == "local-model"
+            assert setting.is_enabled is True
+
+        settings_response = client.get("/settings")
+
+        assert "local-model" in settings_response.text
+        assert "http://localhost:11434/v1" in settings_response.text
+        assert "Enabled" in settings_response.text
     finally:
         app.dependency_overrides.clear()
 

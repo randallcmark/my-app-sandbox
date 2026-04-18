@@ -75,13 +75,13 @@ def render_bookmarklet_setup(request: Request, user: User) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
     }}
 
     * {{
@@ -131,7 +131,7 @@ def render_bookmarklet_setup(request: Request, user: User) -> str:
 
     a {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     section {{
@@ -146,7 +146,7 @@ def render_bookmarklet_setup(request: Request, user: User) -> str:
 
     label {{
       display: grid;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 

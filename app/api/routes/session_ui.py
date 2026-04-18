@@ -29,6 +29,7 @@ from app.db.models.api_token import ApiToken
 from app.db.models.job import Job
 from app.db.models.user import User
 from app.db.models.user_profile import UserProfile
+from app.services.ai import KNOWN_PROVIDERS, list_user_ai_provider_settings, upsert_ai_provider_setting
 from app.services.profiles import get_or_create_user_profile, get_user_profile
 
 router = APIRouter(tags=["session-ui"])
@@ -60,13 +61,13 @@ def login_page(*, error: str | None = None) -> HTMLResponse:
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
       --error: #a43d2b;
     }}
 
@@ -114,7 +115,7 @@ def login_page(*, error: str | None = None) -> HTMLResponse:
 
     label {{
       display: grid;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 
@@ -134,7 +135,7 @@ def login_page(*, error: str | None = None) -> HTMLResponse:
       color: #ffffff;
       cursor: pointer;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       min-height: 44px;
     }}
 
@@ -144,7 +145,7 @@ def login_page(*, error: str | None = None) -> HTMLResponse:
 
     .error {{
       color: var(--error);
-      font-weight: 700;
+      font-weight: 500;
       margin: 0;
     }}
   </style>
@@ -183,13 +184,13 @@ def setup_page(*, error: str | None = None) -> HTMLResponse:
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
       --error: #a43d2b;
     }}
 
@@ -237,7 +238,7 @@ def setup_page(*, error: str | None = None) -> HTMLResponse:
 
     label {{
       display: grid;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 
@@ -257,7 +258,7 @@ def setup_page(*, error: str | None = None) -> HTMLResponse:
       color: #ffffff;
       cursor: pointer;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       min-height: 44px;
     }}
 
@@ -267,7 +268,7 @@ def setup_page(*, error: str | None = None) -> HTMLResponse:
 
     .error {{
       color: var(--error);
-      font-weight: 700;
+      font-weight: 500;
       margin: 0;
     }}
   </style>
@@ -326,6 +327,29 @@ def _api_token_row(api_token: ApiToken) -> str:
     """
 
 
+def _ai_provider_rows(provider_settings) -> str:
+    by_provider = {setting.provider: setting for setting in provider_settings}
+    rows = []
+    labels = {
+        "openai": "OpenAI",
+        "anthropic": "Anthropic",
+        "openai_compatible": "OpenAI-compatible local endpoint",
+    }
+    for provider in KNOWN_PROVIDERS:
+        setting = by_provider.get(provider)
+        rows.append(
+            f"""
+            <tr>
+              <td>{escape(labels[provider])}</td>
+              <td>{escape(setting.model_name if setting else "Not set")}</td>
+              <td>{escape(setting.base_url if setting and setting.base_url else "Default")}</td>
+              <td>{'Enabled' if setting and setting.is_enabled else 'Disabled'}</td>
+            </tr>
+            """
+        )
+    return "\n".join(rows)
+
+
 def _admin_api_token_row(api_token: ApiToken) -> str:
     revoked = api_token.revoked_at is not None
     status_label = "Revoked" if revoked else "Active"
@@ -356,11 +380,13 @@ def settings_page(
     api_tokens: list[ApiToken],
     *,
     profile: UserProfile | None = None,
+    ai_provider_settings=None,
     new_token: str | None = None,
 ) -> HTMLResponse:
     token_rows = "\n".join(_api_token_row(api_token) for api_token in api_tokens)
     if not token_rows:
         token_rows = '<tr><td colspan="6" class="muted">No API tokens yet.</td></tr>'
+    ai_provider_rows = _ai_provider_rows(ai_provider_settings or [])
     new_token_block = (
         f"""
         <section class="secret">
@@ -396,13 +422,13 @@ def settings_page(
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
       --warn: #a43d2b;
     }}
 
@@ -452,7 +478,7 @@ def settings_page(
 
     a {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     section {{
@@ -467,11 +493,21 @@ def settings_page(
 
     label {{
       display: grid;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 
+    .checkbox-label {{
+      align-items: center;
+      display: flex;
+    }}
+
+    .checkbox-label input {{
+      width: auto;
+    }}
+
     input,
+    select,
     textarea {{
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -498,7 +534,7 @@ def settings_page(
       color: #ffffff;
       cursor: pointer;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       min-height: 38px;
       padding: 0 14px;
     }}
@@ -629,6 +665,53 @@ def settings_page(
       </form>
     </section>
 
+    <section id="ai">
+      <h2>AI readiness</h2>
+      <p>AI is optional, inspectable, and disabled by default. These placeholders reserve provider configuration without storing secrets or making external calls.</p>
+      <form method="post" action="/settings/ai-provider">
+        <div class="field-grid">
+          <label>
+            Provider
+            <select name="provider">
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="openai_compatible">OpenAI-compatible local endpoint</option>
+            </select>
+          </label>
+          <label>
+            Label
+            <input name="label" maxlength="200" placeholder="Personal OpenAI, local Ollama, Claude">
+          </label>
+          <label>
+            Base URL
+            <input name="base_url" maxlength="1000" placeholder="Optional for local/OpenAI-compatible endpoints">
+          </label>
+          <label>
+            Model
+            <input name="model_name" maxlength="200" placeholder="Model name">
+          </label>
+        </div>
+        <label class="checkbox-label">
+          <input name="is_enabled" type="checkbox" value="true">
+          Enable provider placeholder
+        </label>
+        <button type="submit">Save AI provider</button>
+      </form>
+      <table>
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Model</th>
+            <th>Base URL</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ai_provider_rows}
+        </tbody>
+      </table>
+    </section>
+
     <section>
       <h2>Create API token</h2>
       <p>Use capture tokens for the browser bookmarklet and future extensions.</p>
@@ -700,13 +783,13 @@ def admin_page(
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f7f9;
+      --page: #f9f9f7;
       --panel: #ffffff;
-      --ink: #1d1f24;
-      --muted: #626b76;
-      --line: #d7dce2;
-      --accent: #147a5c;
-      --accent-strong: #0f5d47;
+      --ink: #111111;
+      --muted: #5f5e5a;
+      --line: rgba(0, 0, 0, 0.10);
+      --accent: #4f67e4;
+      --accent-strong: #2d3a9a;
     }}
 
     * {{
@@ -760,7 +843,7 @@ def admin_page(
 
     a {{
       color: var(--accent-strong);
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     input {{
@@ -778,7 +861,7 @@ def admin_page(
       color: #ffffff;
       cursor: pointer;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       min-height: 38px;
       padding: 0 14px;
     }}
@@ -810,7 +893,7 @@ def admin_page(
     }}
 
     label {{
-      font-weight: 700;
+      font-weight: 500;
     }}
 
     .stats {{
@@ -1104,6 +1187,7 @@ def settings_form(
         current_user,
         _list_user_api_tokens(db, current_user),
         profile=get_user_profile(db, current_user),
+        ai_provider_settings=list_user_ai_provider_settings(db, current_user),
     )
 
 
@@ -1213,8 +1297,35 @@ def settings_create_api_token(
         current_user,
         _list_user_api_tokens(db, current_user),
         profile=get_user_profile(db, current_user),
+        ai_provider_settings=list_user_ai_provider_settings(db, current_user),
         new_token=raw_token,
     )
+
+
+@router.post("/settings/ai-provider", include_in_schema=False)
+def settings_update_ai_provider(
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+    provider: Annotated[str, Form()] = "openai",
+    label: Annotated[str, Form()] = "",
+    base_url: Annotated[str, Form()] = "",
+    model_name: Annotated[str, Form()] = "",
+    is_enabled: Annotated[str | None, Form()] = None,
+) -> RedirectResponse:
+    try:
+        upsert_ai_provider_setting(
+            db,
+            current_user,
+            provider=provider,
+            label=label,
+            base_url=base_url,
+            model_name=model_name,
+            is_enabled=is_enabled == "true",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    db.commit()
+    return RedirectResponse(url="/settings#ai", status_code=status.HTTP_303_SEE_OTHER)
 
 
 @router.post("/settings/profile", include_in_schema=False)

@@ -123,9 +123,11 @@ Test expectations:
 
 Goal: make files reusable assets rather than passive attachments.
 
-Status: first library slice implemented. Users can now view all owned artefacts outside an
-individual job, open the linked job workspace, and download owned artefacts from an owner-scoped
-library route. Reuse/association metadata remains planned follow-on work.
+Status: metadata and reuse groundwork implemented. Users can now view all owned artefacts outside
+an individual job, edit purpose/version/notes/outcome metadata, open linked job workspaces, download
+owned artefacts from an owner-scoped library route, and attach an existing artefact to another job
+without copying the file. Application/interview-level reuse, extraction, and AI suggestions remain
+planned follow-on work.
 
 Implementation targets:
 
@@ -150,6 +152,11 @@ Test expectations:
 ## Phase 6: Embedded AI Readiness
 
 Goal: create stable places for AI outputs before enabling heavy AI features.
+
+Status: schema and settings placeholders implemented. The app now has owner-scoped AI provider
+placeholder records for OpenAI, Anthropic, and OpenAI-compatible endpoints, plus owner-scoped AI
+output records for future recommendations, fit summaries, drafts, profile observations, and
+artefact suggestions. No secrets are stored and no external AI calls are made.
 
 Implementation targets:
 

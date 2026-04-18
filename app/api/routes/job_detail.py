@@ -18,7 +18,14 @@ from app.db.models.interview_event import InterviewEvent
 from app.db.models.job import Job
 from app.db.models.user import User
 from app.services.applications import mark_job_applied
-from app.services.artefacts import get_user_job_artefact_by_uuid, store_job_artefact
+from app.services.artefacts import (
+    get_user_artefact_by_uuid,
+    get_user_job_artefact_by_uuid,
+    link_artefact_to_job,
+    linked_artefacts_for_job,
+    list_user_unlinked_artefacts_for_job,
+    store_job_artefact,
+)
 from app.services.interviews import schedule_interview
 from app.services.jobs import (
     BOARD_STATUSES,
@@ -417,22 +424,46 @@ def _interviews(interviews: list[InterviewEvent]) -> str:
     return f"<ol>{items}</ol>"
 
 
-def _artefact(artefact: Artefact) -> str:
+def _artefact(job: Job, artefact: Artefact) -> str:
     size = f"{artefact.size_bytes} bytes" if artefact.size_bytes is not None else "Size not set"
+    purpose = f"<p>{escape(artefact.purpose)}</p>" if artefact.purpose else ""
+    version = f" · {escape(artefact.version_label)}" if artefact.version_label else ""
     return f"""
     <li>
       <strong>{escape(artefact.filename)}</strong>
-      <p>{escape(artefact.kind)} · {escape(size)}</p>
-      <p><a href="/jobs/{escape(artefact.job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}">Download</a></p>
+      <p>{escape(artefact.kind)}{version} · {escape(size)}</p>
+      {purpose}
+      <p><a href="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}">Download</a></p>
     </li>
     """
 
 
-def _artefacts(artefacts: list[Artefact]) -> str:
+def _artefacts(job: Job, artefacts: list[Artefact]) -> str:
     if not artefacts:
         return '<p class="empty">No artefacts uploaded yet.</p>'
-    items = "\n".join(_artefact(artefact) for artefact in artefacts)
+    items = "\n".join(_artefact(job, artefact) for artefact in artefacts)
     return f"<ol>{items}</ol>"
+
+
+def _link_existing_artefact_form(job: Job, available_artefacts: list[Artefact]) -> str:
+    if not available_artefacts:
+        return '<p class="empty">No other artefacts available to attach yet.</p>'
+    options = "\n".join(
+        f'<option value="{escape(artefact.uuid, quote=True)}">'
+        f'{escape(artefact.filename)} · {escape(artefact.kind)}</option>'
+        for artefact in available_artefacts
+    )
+    return f"""
+    <form class="quick-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefact-links">
+      <label>
+        Existing artefact
+        <select name="artefact_uuid">
+          {options}
+        </select>
+      </label>
+      <button type="submit">Attach existing</button>
+    </form>
+    """
 
 
 def _salary_range(job: Job) -> str:
@@ -540,7 +571,8 @@ def _readiness_item(label: str, ready: bool, detail: str) -> str:
     """
 
 
-def _readiness(job: Job) -> str:
+def _readiness(job: Job, artefacts: list[Artefact] | None = None) -> str:
+    artefacts = artefacts if artefacts is not None else job.artefacts
     items = [
         _readiness_item(
             "Role captured",
@@ -554,8 +586,8 @@ def _readiness(job: Job) -> str:
         ),
         _readiness_item(
             "Artefacts",
-            bool(job.artefacts),
-            "Reusable files are attached." if job.artefacts else "Upload a resume, cover letter, or prep file.",
+            bool(artefacts),
+            "Reusable files are attached." if artefacts else "Upload a resume, cover letter, or prep file.",
         ),
         _readiness_item(
             "Application record",
@@ -832,7 +864,7 @@ def render_new_job() -> str:
 
     label {{
       display: grid;
-      font-weight: 700;
+      font-weight: 500;
       gap: 6px;
     }}
 
@@ -892,12 +924,14 @@ def render_new_job() -> str:
 </html>"""
 
 
-def render_job_detail(job: Job) -> str:
+def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = None) -> str:
     events = sorted(
         job.communications,
         key=lambda event: event.occurred_at or event.created_at,
         reverse=True,
     )
+    artefacts = linked_artefacts_for_job(job)
+    available_artefacts = available_artefacts or []
 
     return f"""<!doctype html>
 <html lang="en">
@@ -1471,7 +1505,7 @@ def render_job_detail(job: Job) -> str:
           </div>
           {_editable_description(job)}
         </section>
-        {_readiness(job)}
+        {_readiness(job, artefacts)}
         <section class="workspace-panel">
           <div class="section-heading">
             <p class="eyebrow">Activity</p>
@@ -1511,7 +1545,9 @@ def render_job_detail(job: Job) -> str:
         </section>
         <section class="workspace-panel">
           <h2>Artefacts</h2>
-          {_artefacts(job.artefacts)}
+          {_artefacts(job, artefacts)}
+          <h2>Attach Existing</h2>
+          {_link_existing_artefact_form(job, available_artefacts)}
           {_artefact_form(job)}
         </section>
         <section class="workspace-panel">
@@ -1753,7 +1789,12 @@ def job_detail(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> HTMLResponse:
     job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
-    return HTMLResponse(render_job_detail(job))
+    return HTMLResponse(
+        render_job_detail(
+            job,
+            available_artefacts=list_user_unlinked_artefacts_for_job(db, current_user, job),
+        )
+    )
 
 
 @router.post("/jobs/{job_uuid}/edit", include_in_schema=False)
@@ -1958,6 +1999,23 @@ def upload_job_artefact_form(
         content_type=file.content_type,
     )
     create_job_note(db, job, subject="Artefact uploaded", notes=f"Uploaded {artefact.filename}.")
+    db.commit()
+    return RedirectResponse(url=f"/jobs/{job.uuid}", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/jobs/{job_uuid}/artefact-links", include_in_schema=False)
+def link_existing_artefact_form(
+    job_uuid: str,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+    artefact_uuid: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    artefact = get_user_artefact_by_uuid(db, current_user, artefact_uuid.strip())
+    if artefact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artefact not found")
+    link_artefact_to_job(db, current_user, job, artefact)
+    create_job_note(db, job, subject="Artefact attached", notes=f"Attached {artefact.filename}.")
     db.commit()
     return RedirectResponse(url=f"/jobs/{job.uuid}", status_code=status.HTTP_303_SEE_OTHER)
 

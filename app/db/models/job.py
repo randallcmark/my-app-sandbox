@@ -42,3 +42,7 @@ class Job(IdMixin, TimestampMixin, Base):
     interviews = relationship("InterviewEvent", back_populates="job", cascade="all, delete-orphan")
     communications = relationship("Communication", back_populates="job", cascade="all, delete-orphan")
     artefacts = relationship("Artefact", back_populates="job", cascade="all, delete-orphan")
+    artefact_links = relationship(
+        "JobArtefactLink", back_populates="job", cascade="all, delete-orphan"
+    )
+    ai_outputs = relationship("AiOutput", back_populates="job")

@@ -78,15 +78,20 @@ As of 2026-04-12, the Stage 3 board workflow is browser-tested through:
 - Job Workspace first refresh: job detail is now organised around a workspace header, next action,
   role overview, readable description, readiness, activity, contextual actions, collapsed
   provenance, and collapsed journal.
-- Artefact Library first slice at `/artefacts`, listing owned files outside individual job
-  workspaces with linked job context and owner-scoped downloads.
+- Artefact Library metadata/reuse slice at `/artefacts`, listing owned files outside individual job
+  workspaces with purpose/version/notes metadata, linked job context, owner-scoped downloads, and
+  attach-existing support from job workspaces.
+- Main server-rendered surfaces moved onto the slate/neutral visual tokens from
+  `docs/design/DESIGN_SYSTEM.md` for a more consistent product feel.
+- Embedded AI readiness schema and settings placeholders, with owner-scoped provider records and
+  visible AI output records. No secrets are stored and no provider calls are made.
 
 Known next product focus:
 
 - Phase 3 follow-up: provider-backed email ingestion and richer enrich/review handling.
 - Phase 4 follow-up: richer external workflow actions on the Job Workspace.
-- Phase 5 follow-up: artefact metadata, reuse, and association flows.
-- Phase 6: embedded AI readiness.
+- Phase 5 follow-up: application/interview-level artefact associations, extraction, and suggestions.
+- Phase 6 follow-up: render AI output records in Job Workspace, Inbox, Focus, and Artefact Library.
 - Phase 7: scheduler and worker support.
 - Phase 8: admin, restore, and self-hosted operations.
 

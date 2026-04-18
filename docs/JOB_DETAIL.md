@@ -37,6 +37,7 @@ http://127.0.0.1:8000/jobs/new
   workflow views such as prospects, in-progress, outcomes, and archived.
 - Adds notes to the timeline, with an optional follow-up date.
 - Uploads, lists, and downloads job-level artefacts.
+- Attaches an existing artefact to a job without copying the stored file.
 - Links to the Artefact Library at `/artefacts` for a cross-job file view.
 - Marks a job applied and creates or updates the application record.
 - Schedules interviews and shows scheduled interview records.
@@ -78,19 +79,21 @@ http://127.0.0.1:8000/board
 
 8. Upload a resume or cover letter artefact and confirm it appears in Artefacts with a download link.
 
-9. Add a note with a follow-up date and confirm it appears in the timeline.
+9. Open another job workspace, attach the existing artefact, and confirm it appears there too.
 
-10. Use Mark Applied and confirm the page shows an application record and a timeline event.
+10. Add a note with a follow-up date and confirm it appears in the timeline.
 
-11. Use Move status to move a job from a prospect state to an in-progress state, or from
+11. Use Mark Applied and confirm the page shows an application record and a timeline event.
+
+12. Use Move status to move a job from a prospect state to an in-progress state, or from
     in-progress to an outcome state, and confirm the Journal records the stage change.
 
-12. Schedule an interview and confirm the page shows an interview record and timeline event.
+13. Schedule an interview and confirm the page shows an interview record and timeline event.
 
-13. Use Archive and confirm the job is archived with a timeline event.
+14. Use Archive and confirm the job is archived with a timeline event.
 
-14. Open the archived job detail page, use Unarchive, choose an active status, and confirm the
+15. Open the archived job detail page, use Unarchive, choose an active status, and confirm the
    job returns to that status with a timeline event.
 
-15. Move another job to a different stage on the board, then open the detail page again and expand
+16. Move another job to a different stage on the board, then open the detail page again and expand
    Journal to confirm the new `stage_change` event appears.
