@@ -88,6 +88,8 @@ As of 2026-04-12, the Stage 3 board workflow is browser-tested through:
 
 Known next product focus:
 
+- Phase 2.5: navigation and responsive shell, including consistent primary navigation, mobile
+  portrait usability, and full Board visual alignment.
 - Phase 3 follow-up: provider-backed email ingestion and richer enrich/review handling.
 - Phase 4 follow-up: richer external workflow actions on the Job Workspace.
 - Phase 5 follow-up: application/interview-level artefact associations, extraction, and suggestions.
@@ -99,6 +101,11 @@ Known bugs:
 
 - Board follow-up timestamps still use server-rendered UTC/date handling. Job detail journal
   timestamps now keep UTC as the stored fallback and render in the browser's local timezone.
+- Board view still needs the same visual-system pass as the other main surfaces.
+- Mobile portrait layouts can become hard to use, especially where text, forms, and action controls
+  compete for the same vertical space.
+- Navigation is inconsistent across pages; some pages expose all core destinations while others
+  expose only a subset, forcing users to remember direct URLs.
 
 ---
 

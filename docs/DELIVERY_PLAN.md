@@ -55,6 +55,39 @@ Test expectations:
 - UI smoke tests for focus with empty and populated data.
 - Regression tests for login redirects and board access.
 
+## Phase 2.5: Navigation And Responsive Shell
+
+Goal: make every page feel like part of one product and usable across desktop, tablet, and mobile.
+
+Status: planned from browser testing feedback. Main pages share slate/neutral tokens, but board still
+needs visual alignment, navigation varies by page, and mobile portrait layout needs dedicated work.
+
+Implementation targets:
+
+- Add a shared navigation shell or shared navigation helper for server-rendered pages.
+- Include a consistent top-left product/home anchor that returns to Focus.
+- Expose the same primary destinations consistently: Focus, Inbox, Active Work/Board, Artefacts,
+  Capture, Settings, and Admin when relevant.
+- Bring Board fully onto the same visual language as Focus, Inbox, Job Workspace, Artefacts, and
+  Settings.
+- Add responsive breakpoints for narrow portrait screens so content does not scroll behind form
+  controls or action bars.
+- Define stable mobile behaviour for large forms, action bars, board/list views, and card grids.
+
+Acceptance criteria:
+
+- A user can reach the primary surfaces from any authenticated page without remembering URLs.
+- Board visually aligns with the design system tokens and component style.
+- Mobile portrait pages remain readable and actionable without overlapping text or hidden controls.
+- Existing route tests continue to pass.
+
+Test expectations:
+
+- UI smoke tests for shared navigation links on Focus, Inbox, Board, Job Workspace, Artefacts,
+  Settings, Capture, and Admin.
+- Browser/manual tests at desktop, tablet, and mobile portrait widths.
+- Regression tests for fixed/sticky controls where present.
+
 ## Phase 3: Inbox And Intake Semantics
 
 Status: implemented for browser/API capture and the first manual paste email-to-Inbox slice. Provider-backed email ingestion and system recommendations remain planned follow-ons.

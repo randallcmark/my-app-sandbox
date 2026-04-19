@@ -104,3 +104,17 @@ Rationale:
 - The product needs a consistent visual language as it moves from functional bootstrap screens to Focus, Inbox, Job Workspace, and Artefact Library surfaces.
 - The design system defines the intended calm-precision personality, semantic colour use, type scale, spacing, component states, fit/confidence treatment, contextual AI blocks, and external-transition convention.
 - Existing screens can migrate incrementally; new surfaces should not introduce another visual style.
+
+## 2026-04-19: Navigation And Responsive Shell Are Product Infrastructure
+
+The product should gain a consistent navigation shell and explicit responsive behaviour before
+additional feature-heavy surfaces are added.
+
+Rationale:
+
+- Focus, Inbox, Board, Job Workspace, Artefacts, Capture, Settings, and Admin are now distinct
+  surfaces; users should not need to remember direct URLs to move between them.
+- A top-left home/product anchor should consistently return to Focus.
+- Mobile portrait usability is currently uneven and should be treated as core product quality, not
+  cosmetic polish.
+- Board visual alignment should be completed so Active Work does not feel like a separate product.
