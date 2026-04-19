@@ -1430,6 +1430,25 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
         display: grid;
       }}
 
+      .layout {{
+        grid-template-columns: 1fr;
+      }}
+
+      .workspace-main,
+      .workspace-aside,
+      .workspace-panel,
+      .workspace-hero {{
+        min-width: 0;
+      }}
+
+      .workspace-aside {{
+        order: 2;
+      }}
+
+      .workspace-main {{
+        order: 1;
+      }}
+
       .next-action,
       .overview-grid,
       .activity-grid {{
