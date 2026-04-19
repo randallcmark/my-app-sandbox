@@ -21,8 +21,7 @@ anonymous users are sent to `/login`.
   - `/board?workflow=archived` for archived jobs.
 - Hides `archived` jobs from active workflow views.
 - Uses workflow tabs in the refined UI.
-- Keeps the previous kanban/dropdown UI available at `/board?ui=classic`.
-- Provides a `Classic` toggle from the refined board and a `Refined` toggle from classic mode.
+- Treats legacy `ui` query values (for example `/board?ui=classic`) as refined board requests.
 - Links to the manual add-job form at `/jobs/new`.
 - Links each card title to a job detail page at `/jobs/{job_uuid}`.
 - Shows focused list views for:
@@ -45,13 +44,10 @@ anonymous users are sent to `/login`.
   - `Follow-up overdue`
   - `Follow-up YYYY-MM-DD`
 - Provides compact contextual status actions on refined jobs.
-- Provides a `Move to column` dropdown on classic kanban cards.
 - Persists stage changes with `PATCH /api/jobs/{job_uuid}/board`.
-- Supports dragging refined lane jobs and classic kanban cards within and across columns.
+- Supports dragging refined lane jobs within and across columns.
 - Persists drag-and-drop ordering with `PATCH /api/jobs/board`.
 - Records status changes in each job's timeline.
-
-Classic mode remains available while the refined UI is being tested and polished.
 
 ## Browser Test
 
@@ -96,8 +92,6 @@ http://127.0.0.1:8000/login
 14. In refined lane views, drag a job to another lane or use its compact action chips.
 
 15. Refresh the page and confirm the job remains in the new stage.
-
-16. Use `Classic` and confirm `/board?ui=classic` still exposes the original dropdown board.
 
 ## Terminal Check
 
