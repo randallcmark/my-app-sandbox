@@ -118,3 +118,18 @@ Rationale:
 - Mobile portrait usability is currently uneven and should be treated as core product quality, not
   cosmetic polish.
 - Board visual alignment should be completed so Active Work does not feel like a separate product.
+
+## 2026-04-19: User Context Belongs In The Account Menu
+
+Persistent account-specific operations should live under the logged-in username rather than in the
+primary workflow navigation.
+
+Rationale:
+
+- The primary navigation should stay focused on work surfaces: Focus, Inbox, Board, and Artefacts.
+- User Settings, Capture Settings, Help, and Sign out are contextual account or setup operations,
+  not daily workflow destinations.
+- Admin and API Docs should be visible only for admin users and grouped with other user-context
+  actions.
+- The username menu gives the user a stable place for account, setup, and operational options
+  without crowding the page-level lozenge navigation.

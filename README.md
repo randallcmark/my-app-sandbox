@@ -16,6 +16,8 @@ The target product is:
 - local-first, with SQLite and local storage defaults;
 - optionally multi-user inside one contained deployment;
 - organised around Focus, Inbox, Active Work, Job Workspace, Artefacts, Capture, and Admin surfaces;
+- uses a shared application shell with primary workflow navigation and a user-context menu for
+  settings, capture setup, help, sign-out, and admin tools;
 - workflow-board friendly for stage management without making kanban the product centre;
 - browser-capture friendly for importing jobs from job pages;
 - profile-aware over time, with optional matching and writing assistance;
@@ -71,6 +73,9 @@ This clean repo now contains a usable authenticated tracker:
 - owner-scoped jobs API and browser capture endpoint;
 - Focus home surface for due follow-ups, stale work, upcoming interviews, and recent prospects;
 - Inbox review surface for captured jobs that need acceptance before active workflow views;
+- shared server-rendered layout across the main authenticated pages, with a top-right user menu for
+  User Settings, Capture Settings, Help, Sign out, and admin-only Admin/API Docs;
+- built-in Help page with task-oriented guidance for the main workflow;
 - manual job creation and editable job detail pages;
 - workflow board views with drag/drop and a `Move to column` fallback;
 - status-change timeline, notes, follow-up dates, applications, interviews, archive/unarchive;
@@ -78,9 +83,9 @@ This clean repo now contains a usable authenticated tracker:
 - stage-aging, stale-card, and follow-up indicators;
 - Alembic migrations, Dockerfile, Docker Compose file, and pytest coverage.
 
-The next implementation work should follow the refreshed delivery plan: Intent/Profile foundation,
-Focus surface, Inbox semantics, Job Workspace refresh, Artefact Library, embedded AI readiness,
-scheduler/worker support, and self-hosted operations.
+The next implementation work should follow the refreshed delivery plan: mobile shell validation,
+Inbox/provider-backed intake follow-ups, Job Workspace refinements, Artefact Library follow-ups,
+embedded AI rendering, scheduler/worker support, and self-hosted operations.
 
 ## Local Development
 
@@ -185,7 +190,7 @@ A command-line fallback is also available:
 docker compose exec app python -m app.cli users create-admin --email you@example.com
 ```
 
-Admin setup and maintenance tasks are available after login:
+Admin setup and maintenance tasks are available from the username menu for admin users, or directly:
 
 ```text
 http://localhost:8000/admin

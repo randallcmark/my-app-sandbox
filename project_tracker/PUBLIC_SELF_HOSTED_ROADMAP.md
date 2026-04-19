@@ -11,7 +11,7 @@ Status key:
 - Planned: not started or needs a substantial rebuild.
 - Deferred: intentionally out of scope until the core product is stable.
 
-Last planning update: 2026-04-15
+Last planning update: 2026-04-19
 
 ---
 
@@ -48,12 +48,12 @@ Canonical product docs:
 
 ## Current Checkpoint
 
-As of 2026-04-12, the Stage 3 board workflow is browser-tested through:
+As of 2026-04-19, the app is verified through:
 
 - Login/logout.
 - Manual job creation from `/jobs/new`.
 - Board workflow dropdown views for prospects, in progress, outcomes, all active, and archived jobs.
-- Refined board UI as the default board experience, with classic board mode available via toggle.
+- Refined board UI as the default board experience, with the legacy classic/refined switch removed.
 - Focused list views for prospects, outcomes, and archived jobs.
 - Prospects quick-triage actions for interested and archive.
 - Drag/drop and `Move to column` dropdown stage movement in kanban views.
@@ -83,18 +83,23 @@ As of 2026-04-12, the Stage 3 board workflow is browser-tested through:
   attach-existing support from job workspaces.
 - Main server-rendered surfaces moved onto the slate/neutral visual tokens from
   `docs/design/DESIGN_SYSTEM.md` for a more consistent product feel.
+- Shared application shell across Focus, Inbox, Paste email, Artefacts, Board, Job Workspace, Add
+  Job, User Settings, Capture Settings, Help, and Admin, with stable framing and a consistent
+  top-left Focus/home anchor.
+- Top-right user-context menu for User Settings, Capture Settings, Help, Sign out, and admin-only
+  Admin/API Docs.
+- Authenticated Help page with workflow guidance for Focus, Inbox, Board, Job Workspace, Artefacts,
+  Capture, Settings/privacy, and admin operations.
 - Embedded AI readiness schema and settings placeholders, with owner-scoped provider records and
   visible AI output records. No secrets are stored and no provider calls are made.
 
 Known next product focus:
 
-- Phase 2.5: navigation and responsive shell. Shared navigation is implemented across the core
-  authenticated server-rendered pages, including Focus, Inbox, Paste email, Artefacts, Board, Job
-  Workspace, Add Job, Settings, Capture setup, and Admin. First responsive hardening is implemented
-  for nav overflow, board controls, job workspace save controls, tables, and stacked actions.
-  Continue with manual mobile portrait validation and full Board visual alignment.
+- Phase 2.5 follow-up: manual mobile portrait validation and any resulting refinements to large
+  forms, tables, board lanes, and job workspace controls.
 - Phase 3 follow-up: provider-backed email ingestion and richer enrich/review handling.
-- Phase 4 follow-up: richer external workflow actions on the Job Workspace.
+- Phase 4 follow-up: continue improving Job Workspace execution flows where external systems are
+  involved.
 - Phase 5 follow-up: application/interview-level artefact associations, extraction, and suggestions.
 - Phase 6 follow-up: render AI output records in Job Workspace, Inbox, Focus, and Artefact Library.
 - Phase 7: scheduler and worker support.
@@ -104,11 +109,8 @@ Known bugs:
 
 - Board follow-up timestamps still use server-rendered UTC/date handling. Job detail journal
   timestamps now keep UTC as the stored fallback and render in the browser's local timezone.
-- Board view still needs the same visual-system pass as the other main surfaces.
 - Mobile portrait layouts can become hard to use, especially where text, forms, and action controls
   compete for the same vertical space.
-- Navigation is inconsistent across pages; some pages expose all core destinations while others
-  expose only a subset, forcing users to remember direct URLs.
 
 ---
 

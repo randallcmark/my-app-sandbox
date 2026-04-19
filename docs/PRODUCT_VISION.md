@@ -40,6 +40,10 @@ Capture brings jobs into the system from manual entry, browser extensions, APIs,
 
 Admin supports self-hosted operation: users, API tokens, backups, restore, scheduler runs, health, and deployment maintenance.
 
+Help is a lightweight product guide available to every authenticated user. It should explain how
+the surfaces relate, reinforce Focus-first daily use, and keep self-hosted/admin guidance visible
+without turning the main workflow into documentation.
+
 ## Design Principles
 
 The canonical visual system is `docs/design/DESIGN_SYSTEM.md`. New UI work should use that document for colour, typography, spacing, component, AI guidance, and external-transition decisions.
@@ -73,3 +77,6 @@ Active Work shows the jobs already being pursued.
 Job Workspace is where a specific application is prepared, submitted, followed up, and learned from.
 
 The board remains useful for stage movement and visual scanning, but it is no longer the strategic centre. It is one lens over Active Work.
+
+User-context operations such as User Settings, Capture Settings, Help, Sign out, and admin-only
+Admin/API Docs belong under the logged-in username rather than in the primary workflow navigation.

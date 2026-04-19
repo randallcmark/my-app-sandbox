@@ -6,7 +6,7 @@ The first version is manual and owner-scoped. It does not call AI services and i
 
 ## Browser UI
 
-Open Settings and use the Job-search profile section:
+Open User Settings from the username menu and use the Job-search profile section:
 
 ```text
 http://127.0.0.1:8000/settings#profile

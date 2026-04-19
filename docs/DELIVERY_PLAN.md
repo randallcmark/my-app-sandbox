@@ -59,23 +59,27 @@ Test expectations:
 
 Goal: make every page feel like part of one product and usable across desktop, tablet, and mobile.
 
-Status: partially implemented. A shared server-rendered navigation helper now provides a
-consistent product anchor, primary navigation, compact action links, and sign-out across Focus,
-Inbox, Paste email, Artefacts, both Board modes, Job Workspace, Add Job, Settings, Capture setup,
-and Admin. The first responsive hardening pass improves mobile navigation, board workflow controls,
-job workspace editing/save controls, tables, and stacked actions. Manual browser testing at narrow
-portrait widths and full Board visual alignment remain follow-up work.
+Status: implemented for the core authenticated server-rendered surfaces. A shared shell now
+provides a consistent product anchor, stable page framing, primary workflow navigation, page action
+links, and a user-context menu across Focus, Inbox, Paste email, Artefacts, Board, Job Workspace,
+Add Job, Settings, Capture setup, Help, and Admin. User-context operations now live under the
+top-right username menu: User Settings, Capture Settings, Help, Sign out, and Admin/API Docs for
+admin users. The first responsive hardening pass improves mobile navigation, board workflow
+controls, job workspace editing/save controls, tables, and stacked actions. Manual browser testing
+at narrow portrait widths remains follow-up work.
 
 Implementation targets:
 
 - Add a shared navigation shell or shared navigation helper for server-rendered pages. Done for the
   core authenticated server-rendered pages.
 - Include a consistent top-left product/home anchor that returns to Focus. Done for Focus, Inbox,
-  Paste email, Artefacts, Board, Job Workspace, Add Job, Settings, Capture setup, and Admin.
-- Expose the same primary destinations consistently: Focus, Inbox, Active Work/Board, Artefacts,
-  Capture, Settings, and Admin when relevant. Done for the same core authenticated pages.
+  Paste email, Artefacts, Board, Job Workspace, Add Job, Settings, Capture setup, Help, and Admin.
+- Expose the same primary workflow destinations consistently: Focus, Inbox, Board, and Artefacts.
+  User-context destinations live in the username menu: User Settings, Capture Settings, Help, Sign
+  out, and admin-only Admin/API Docs.
 - Bring Board fully onto the same visual language as Focus, Inbox, Job Workspace, Artefacts, and
-  Settings.
+  Settings. Done for the current refined board experience.
+- Add first-party Help content for the core user workflow and admin operations. Done at `/help`.
 - Add responsive breakpoints for narrow portrait screens so content does not scroll behind form
   controls or action bars. Started with shared nav overflow handling, job workspace savebar
   placement, and table/action stacking.
@@ -86,15 +90,17 @@ Acceptance criteria:
 
 - A user can reach the primary surfaces from any authenticated page without remembering URLs.
 - Board visually aligns with the design system tokens and component style.
+- User-context operations are grouped under the logged-in username and respect admin visibility.
+- Help is available to all authenticated users from the user-context menu.
 - Mobile portrait pages remain readable and actionable without overlapping text or hidden controls.
 - Existing route tests continue to pass.
 
 Test expectations:
 
-- UI smoke tests for shared navigation links on Focus, Inbox, Board, Job Workspace, Artefacts,
-  Settings, Capture, and Admin.
+- UI smoke tests for shared navigation links and user-context menu access on Focus, Inbox, Board,
+  Job Workspace, Artefacts, Settings, Capture setup, Help, and Admin.
 - Current regression coverage: Focus, Inbox, Artefacts, Board, Job Workspace, Capture setup,
-  Settings, and Admin route tests.
+  Settings, Help, and Admin route tests.
 - Browser/manual tests at desktop, tablet, and mobile portrait widths. Still required after CSS
   hardening.
 - Regression tests for fixed/sticky controls where present.
@@ -280,6 +286,8 @@ Planned public additions:
 - Intake metadata for source, confidence, and review state.
 - Job workspace actions for external application workflow.
 - Artefact library and association flows.
+- Shared server-rendered shell with user-context menu.
+- Authenticated `/help` page.
 - Visible AI output records.
 - Scheduler run records and admin views.
 

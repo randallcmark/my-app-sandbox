@@ -29,7 +29,9 @@ The board remains available at:
 http://127.0.0.1:8000/board
 ```
 
-Focus links directly to job detail pages, Board, Add job, Capture setup, Profile, Settings, and Admin for admins.
+Focus links directly to job detail pages, Board, and Add job. User Settings, Capture Settings, Help,
+Sign out, and admin-only Admin/API Docs are available from the username menu in the top-right
+corner.
 
 ## Test Instructions
 

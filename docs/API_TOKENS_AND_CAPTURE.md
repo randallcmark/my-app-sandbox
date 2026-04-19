@@ -14,13 +14,13 @@ Token secrets are shown once when created. The database stores only a hash.
 
 ### Browser
 
-Open Settings while logged in:
+Open User Settings from the username menu while logged in:
 
 ```text
 http://127.0.0.1:8000/settings
 ```
 
-Use `Create capture token`. The token secret is shown once. Paste it into Capture setup before
+Use `Create capture token`. The token secret is shown once. Paste it into Capture Settings before
 leaving the page.
 
 Admins can also create and revoke capture tokens from:
@@ -81,15 +81,15 @@ curl -i \
 ```
 
 API revocation is owner-scoped. A logged-in user cannot revoke another user's token through the API
-or Settings page. Admins can revoke tokens across users from `/admin`.
+or User Settings page. Admins can revoke tokens across users from `/admin`.
 
 ## Browser Bookmarklet
 
 The first browser capture path is a generated bookmarklet. It is useful before the packaged browser
 extension is wired up, and it works with the same `capture:jobs` bearer token.
 
-1. Create a token with the `capture:jobs` scope from Settings.
-2. Open the setup page while logged in:
+1. Create a token with the `capture:jobs` scope from User Settings.
+2. Open Capture Settings from the username menu while logged in, or visit:
 
 ```text
 http://127.0.0.1:8000/api/capture/bookmarklet

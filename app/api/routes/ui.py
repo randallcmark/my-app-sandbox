@@ -11,7 +11,6 @@ PRIMARY_NAV: tuple[NavLink, ...] = (
     ("Inbox", "/inbox", "inbox"),
     ("Board", "/board", "board"),
     ("Artefacts", "/artefacts", "artefacts"),
-    ("Capture", "/api/capture/bookmarklet", "capture"),
 )
 
 
@@ -344,7 +343,10 @@ def app_header(
 ) -> str:
     links = _render_links(actions, active=active, primary=True)
     links.extend(_render_links(PRIMARY_NAV, active=active, primary=False))
-    menu_links: list[str] = [_render_user_menu_link("Settings", "/settings", active=active == "settings")]
+    menu_links: list[str] = [_render_user_menu_link("User Settings", "/settings", active=active == "settings")]
+    menu_links.append(
+        _render_user_menu_link("Capture Settings", "/api/capture/bookmarklet", active=active == "capture")
+    )
     if user.is_admin:
         menu_links.append(_render_user_menu_link("Admin", "/admin", active=active == "admin"))
         menu_links.append(_render_user_menu_link("API Docs", "/docs", active=False))

@@ -10,7 +10,7 @@ keys, call external providers, mutate jobs, mutate profiles, or change workflow 
 
 ## Provider Placeholders
 
-Open Settings:
+Open User Settings from the username menu:
 
 ```text
 http://127.0.0.1:8000/settings#ai
