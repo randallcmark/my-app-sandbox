@@ -373,3 +373,132 @@ def test_email_capture_form_creates_inbox_job(tmp_path: Path, monkeypatch) -> No
         assert "Pasted role" not in client.get("/board?workflow=prospects").text
     finally:
         app.dependency_overrides.clear()
+
+
+def test_inbox_review_page_renders_for_owned_inbox_job(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        token = create_capture_token(client, session_local)
+        captured = client.post(
+            "/api/capture/jobs",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "source_url": "https://jobs.example.com/review",
+                "title": "Review role",
+                "company": "Capture Co",
+            },
+        )
+        job_uuid = captured.json()["uuid"]
+
+        response = client.get(f"/inbox/{job_uuid}/review")
+
+        assert response.status_code == 200
+        assert "Review Inbox Item" in response.text
+        assert 'action="/inbox/' in response.text
+        assert "Capture Co" in response.text
+        assert "https://jobs.example.com/review" in response.text
+        assert "Captured context" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_inbox_review_update_saves_changes_and_creates_note(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        token = create_capture_token(client, session_local)
+        captured = client.post(
+            "/api/capture/jobs",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"source_url": "https://jobs.example.com/original", "title": "Original title"},
+        )
+        job_uuid = captured.json()["uuid"]
+
+        response = client.post(
+            f"/inbox/{job_uuid}/review",
+            data={
+                "title": " Updated title ",
+                "company": "  New Co  ",
+                "location": " Remote ",
+                "source": " Email ",
+                "source_url": " https://jobs.example.com/updated ",
+                "description_raw": " Tailored description ",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert response.headers["location"] == f"/inbox/{job_uuid}/review"
+
+        with session_local() as db:
+            job = db.scalar(select(Job).where(Job.uuid == job_uuid))
+
+            assert job is not None
+            assert job.title == "Updated title"
+            assert job.company == "New Co"
+            assert job.location == "Remote"
+            assert job.source == "Email"
+            assert job.source_url == "https://jobs.example.com/updated"
+            assert job.apply_url == "https://jobs.example.com/updated"
+            assert job.description_raw == "Tailored description"
+            assert job.description_clean == "Tailored description"
+            assert job.communications[-1].subject == "Inbox enriched"
+            assert "title" in (job.communications[-1].notes or "")
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_inbox_review_update_rejects_blank_title(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        token = create_capture_token(client, session_local)
+        captured = client.post(
+            "/api/capture/jobs",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"source_url": "https://jobs.example.com/blank-title", "title": "Role"},
+        )
+        job_uuid = captured.json()["uuid"]
+
+        response = client.post(
+            f"/inbox/{job_uuid}/review",
+            data={"title": "   "},
+        )
+
+        assert response.status_code == 200
+        assert "Title is required" in response.text
+
+        with session_local() as db:
+            job = db.scalar(select(Job).where(Job.uuid == job_uuid))
+
+            assert job is not None
+            assert job.title == "Role"
+            assert all(note.subject != "Inbox enriched" for note in job.communications)
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_inbox_review_page_is_owner_scoped(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            owner = create_local_user(db, email="owner@example.com", password="password")
+            other = create_local_user(db, email="other@example.com", password="password")
+            db.flush()
+            job = Job(
+                owner_user_id=other.id,
+                title="Other inbox role",
+                status="saved",
+                intake_source="api_capture",
+                intake_confidence="medium",
+                intake_state="needs_review",
+            )
+            db.add(job)
+            db.commit()
+            job_uuid = job.uuid
+
+        login(client, "owner@example.com")
+
+        response = client.get(f"/inbox/{job_uuid}/review")
+
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()

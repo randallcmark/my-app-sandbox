@@ -72,7 +72,7 @@ def test_board_defaults_to_in_progress_workflow(tmp_path: Path, monkeypatch) -> 
         assert "Other user role" not in response.text
         assert 'class="refined-board"' in response.text
         assert 'class="workflow-tab active" href="/board?workflow=in_progress"' in response.text
-        assert 'href="/board?workflow=in_progress&ui=classic"' in response.text
+        assert "ui=classic" not in response.text
         assert 'data-status="preparing"' in response.text
         assert 'data-status="applied"' in response.text
         assert 'data-status="interviewing"' in response.text
@@ -89,7 +89,7 @@ def test_board_defaults_to_in_progress_workflow(tmp_path: Path, monkeypatch) -> 
         app.dependency_overrides.clear()
 
 
-def test_board_classic_ui_keeps_legacy_controls(tmp_path: Path, monkeypatch) -> None:
+def test_board_legacy_ui_query_parameter_renders_refined_board(tmp_path: Path, monkeypatch) -> None:
     client, session_local = build_client(tmp_path, monkeypatch)
     try:
         with session_local() as db:
@@ -107,12 +107,12 @@ def test_board_classic_ui_keeps_legacy_controls(tmp_path: Path, monkeypatch) -> 
         response = client.get("/board?workflow=in_progress&ui=classic")
 
         assert response.status_code == 200
-        assert "Application Board" in response.text
+        assert "Application Tracker" in response.text
         assert "Applied role" in response.text
-        assert 'class="workflow-select"' in response.text
-        assert 'class="job-status-select"' in response.text
-        assert 'href="/board?workflow=in_progress">Refined</a>' in response.text
-        assert "ui=classic" in response.text
+        assert 'class="refined-board"' in response.text
+        assert 'class="workflow-select"' not in response.text
+        assert 'class="job-status-select"' not in response.text
+        assert "ui=classic" not in response.text
     finally:
         app.dependency_overrides.clear()
 
