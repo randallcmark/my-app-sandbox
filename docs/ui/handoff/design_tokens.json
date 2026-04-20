@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "name": "Application Tracker UI Handoff",
+    "version": "0.1.0",
+    "intent": "Desktop mockup reconstruction for engineering guidance",
+    "notes": [
+      "Tokens are inferred from the generated concept image",
+      "Use as a starting system, not a strict visual source of truth"
+    ]
+  },
+  "color": {
+    "bg": {
+      "start": "#0f3b65",
+      "end": "#eef2f6"
+    },
+    "surface": {
+      "default": "#ffffff",
+      "soft": "#f7f9fc",
+      "muted": "#f2f5f9",
+      "shell": "rgba(247, 249, 252, 0.95)"
+    },
+    "text": {
+      "default": "#1f3447",
+      "muted": "#5d7085",
+      "soft": "#7e90a5"
+    },
+    "line": {
+      "default": "#d7dee8",
+      "soft": "#e7edf3"
+    },
+    "primary": {
+      "default": "#1e73d9",
+      "strong": "#105ec0",
+      "soft": "#edf5ff"
+    },
+    "accent": {
+      "red": "#e25b4c",
+      "amber": "#e39b3d",
+      "green": "#3ba786"
+    }
+  },
+  "radius": {
+    "shell": "18px",
+    "xl": "16px",
+    "lg": "12px",
+    "md": "10px",
+    "sm": "8px",
+    "pill": "999px"
+  },
+  "shadow": {
+    "xl": "0 28px 70px rgba(16, 34, 52, 0.20)",
+    "lg": "0 10px 26px rgba(16, 34, 52, 0.10)",
+    "sm": "0 1px 3px rgba(16, 34, 52, 0.06)"
+  },
+  "layout": {
+    "topbarHeight": "74px",
+    "sidebarWidth": "420px",
+    "contentGap": "20px",
+    "mainPadding": "28px",
+    "windowRadius": "18px"
+  },
+  "type": {
+    "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    "heroTitle": "24px / 1.15 / 800",
+    "heroBody": "18px / 1.4 / 400",
+    "panelTitle": "18px / 1.2 / 800",
+    "cardTitle": "18px / 1.2 / 800",
+    "button": "15px / 1 / 600",
+    "meta": "13px / 1.4 / 400"
+  }
+}
