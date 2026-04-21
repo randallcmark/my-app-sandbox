@@ -1,6 +1,6 @@
 # Application Tracker — Design Language & Visual System
 
-**Version 1.0 · April 2026**  
+**Version 1.1 · April 2026**  
 Confidential — design team use
 
 ---
@@ -26,11 +26,20 @@ Confidential — design team use
 
 Application Tracker is designed around a single visual personality: **calm precision**. The interface should feel like a well-organised desk — never dashboard-dense, never productivity-app busy. Every surface communicates quiet competence: the user always knows where they are, what needs doing, and what the system thinks without being overwhelmed.
 
+The current implementation also supports a **two-layer visual model**:
+
+- **Outer shell** — scenic backdrop, glass shell, controlled gradients, and selected shadows that frame the workspace.
+- **Inner content** — readable token-led cards, forms, tables, and workflow panels that stay calm and structured.
+
+Reference artifact:
+
+- `docs/design/reference/application_tracker_ui_mockup_inspectable.html`
+
 ### Core personality traits
 
 - **Quiet** — generous whitespace, muted secondary tones, no decorative noise
 - **Precise** — tight typographic hierarchy, consistent component sizing, 0.5px borders
-- **Modern** — flat surfaces only, no gradients or shadows, clean geometry
+- **Modern** — clean geometry with restrained gradients and shadows only where they clarify shell framing, depth, or emphasis
 - **Supportive** — AI guidance that appears in context, never as a feature to hunt for
 - **Never noisy or gamified** — no confetti, streaks, scores, or achievement mechanics
 
@@ -38,11 +47,19 @@ Application Tracker is designed around a single visual personality: **calm preci
 
 Linear, Notion, and Pitch. Tools that feel intelligent without performing intelligence. The experience should feel native and calm — not like an embedded third-party widget.
 
+Reference fidelity rules:
+
+- Keep closely: scenic backdrop, frosted shell, larger radii, stronger card hierarchy, richer primary CTA treatment.
+- Adapt rather than copy literally: illustrative icons, avatar and notification affordances, placeholder content, and personal-dashboard framing.
+- Constrain: gradients to shell framing, emphasis surfaces, and primary actions; shadows to shell, elevated cards, and overlays.
+
 ---
 
 ## 2. Colour system
 
 The palette is structured around semantic roles, not decoration. Each colour communicates something specific. Use them consistently across components, states, and surfaces.
+
+In addition to semantic workflow colours, the shell uses a small framing palette for backdrop, glass, soft elevation, and richer text tiers. Those colours should still be expressed as named tokens rather than one-off literals in route modules.
 
 ### Brand — Slate Blue
 

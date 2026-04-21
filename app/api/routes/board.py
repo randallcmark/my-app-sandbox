@@ -347,8 +347,9 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
 
     .workflow-tab {{
       align-items: center;
-      background: #ffffff;
-      border: 0.5px solid var(--line);
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--line-soft);
+      box-shadow: var(--shadow-sm);
       color: var(--ink);
       display: inline-flex;
       font-size: 0.88rem;
@@ -371,9 +372,10 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     }}
 
     .metric {{
-      background: var(--panel);
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
+      background: rgba(255,255,255,0.86);
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-sm);
       flex: 0 0 auto;
       min-width: 126px;
       padding: 12px;
@@ -408,9 +410,10 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     }}
 
     .refined-lane {{
-      background: var(--soft);
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
+      background: rgba(255,255,255,0.60);
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-xl);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.48);
       min-height: 58vh;
       min-width: 250px;
       padding: 12px;
@@ -428,10 +431,11 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     }}
 
     .refined-item {{
-      background: var(--panel);
-      border: 0.5px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
+      border: 1px solid var(--line-soft);
       border-left: 3px solid var(--accent);
-      border-radius: 10px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
       display: block;
       min-height: 112px;
       padding: 14px;
@@ -569,7 +573,7 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     }}
 
     .item-actions {{
-      border-top: 0.5px solid var(--line);
+      border-top: 1px solid var(--line-soft);
       justify-content: start;
       margin-top: 2px;
       padding-top: 10px;
@@ -807,6 +811,8 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
         active="board",
         actions=(("Add job", "/jobs/new", "add-job"),),
         body=body,
+        kicker="Active work",
+        goal=f"<span>Workflow:</span> <strong>{escape(workflow_label)}</strong>",
         container="kanban",
         extra_styles=extra_styles,
         scripts=scripts,

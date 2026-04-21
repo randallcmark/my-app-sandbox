@@ -204,6 +204,7 @@ def render_artefact_library(user: User, artefacts: list[Artefact]) -> HTMLRespon
             active="artefacts",
             actions=(("Add job", "/jobs/new", "add-job"),),
             body=body,
+            kicker="Library",
             container="wide",
             extra_styles=extra_styles,
         )

@@ -106,9 +106,14 @@ def _job_card(job: Job) -> str:
     confidence = job.intake_confidence.replace("_", " ")
     return f"""
     <article class="inbox-card">
-      <div>
-        <p class="meta">{escape(source)} · {escape(confidence)} confidence</p>
-        <h2><a href="/jobs/{escape(job.uuid, quote=True)}">{escape(job.title)}</a></h2>
+      <div class="card-header">
+        <div>
+          <p class="panel-micro">{escape(source)} · {escape(confidence)} confidence</p>
+          <h2><a href="/jobs/{escape(job.uuid, quote=True)}">{escape(job.title)}</a></h2>
+        </div>
+        <span class="status-pill accent">Needs review</span>
+      </div>
+      <div class="inbox-card-body">
         <p>{escape(job.company or "Company not set")} · {escape(job.location or "Location not set")}</p>
         <p>{_source_action(job)}</p>
         <p class="meta">Captured {_value(job.captured_at or job.created_at)}</p>
@@ -130,8 +135,14 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
     cards = "\n".join(_job_card(job) for job in jobs)
     if not cards:
         cards = """
-        <section class="empty-state">
-          <h2>Inbox is clear</h2>
+        <section class="page-panel soft empty-state">
+          <div class="panel-header">
+            <div>
+              <p class="panel-micro">Clear queue</p>
+              <h2>Inbox is clear</h2>
+            </div>
+            <span class="status-pill success">Up to date</span>
+          </div>
           <p>Captured and recommended jobs that need review will appear here before they move into active work.</p>
           <div class="empty-actions">
             <a class="button" href="/inbox/email/new">Paste email</a>
@@ -142,40 +153,65 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
     extra_styles = compact_content_rhythm_styles() + """
     :root { --warn: #a43d2b; }
     .inbox-list { display: grid; gap: 12px; }
-    .inbox-card, .empty-state {
-      background: var(--panel);
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
+    .inbox-card {
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
       display: grid;
       gap: 14px;
-      padding: 16px;
+      padding: 18px;
     }
-    .inbox-card { grid-template-columns: minmax(0, 1fr) auto; }
-    .inbox-card > div { min-width: 0; }
-    .source-url { overflow-wrap: anywhere; word-break: break-word; }
+    .inbox-card-body { display: grid; gap: 6px; }
+    .meta { color: var(--muted); }
     .actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
-    button, .button, .secondary {
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
-      cursor: pointer;
-      display: inline-flex;
-      font: inherit;
-      font-weight: 500;
-      padding: 8px 10px;
-      text-decoration: none;
+    .inbox-aside { display: grid; gap: 18px; }
+    .tip-list {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
     }
-    button, .button {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #ffffff;
+    .tip-list li {
+      border-left: 3px solid rgba(255,255,255,0.28);
+      padding-left: 10px;
     }
-    .secondary { background: transparent; color: var(--accent-strong); }
-    .ghost { background: transparent; border-color: var(--line); color: var(--warn); }
     @media (max-width: 760px) {
-      .inbox-card { align-items: start; grid-template-columns: 1fr; }
       .actions { width: 100%; }
       .actions > *, .actions button, .actions a { width: 100%; }
     }
+    """
+    aside = f"""
+    <div class="inbox-aside">
+      <section class="page-panel soft">
+        <div class="panel-header">
+          <div>
+            <p class="panel-micro">Triage</p>
+            <h2>Review before effort</h2>
+          </div>
+          <span class="status-pill accent">{len(jobs)} queued</span>
+        </div>
+        <p>Inbox is for judgement. Clean up extracted fields, then accept into active work only when the opportunity deserves attention.</p>
+        <div class="mobile-stack">
+          <a class="button" href="/inbox/email/new">Paste email</a>
+          <a class="secondary" href="/api/capture/bookmarklet">Capture setup</a>
+        </div>
+      </section>
+      <section class="page-panel emphasis">
+        <div class="panel-header">
+          <div>
+            <p class="panel-micro">Good review habits</p>
+            <h2>Keep provenance visible</h2>
+          </div>
+        </div>
+        <ul class="tip-list">
+          <li>Prefer Review when the capture needs cleanup before acceptance.</li>
+          <li>Keep the source/apply URL accurate so external follow-up stays recoverable.</li>
+          <li>Dismiss weak opportunities so Board and Focus stay calm.</li>
+        </ul>
+      </section>
+    </div>
     """
     body = f"""
     <div class="inbox-list">
@@ -191,7 +227,9 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
             active="inbox",
             actions=(("Paste email", "/inbox/email/new", "paste-email"), ("Add job", "/jobs/new", "add-job")),
             body=body,
-            container="standard",
+            aside=aside,
+            kicker="Triage surface",
+            container="split",
             extra_styles=extra_styles,
         )
     )
@@ -256,47 +294,14 @@ def render_inbox_review(user: User, job: Job, *, error: str | None = None) -> HT
     extra_styles = compact_content_rhythm_styles() + """
     :root { --warn: #a43d2b; }
     .hint, .meta { color: var(--muted); line-height: 1.45; }
-    .review-layout {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-    }
-    section { padding: 18px; }
     form { display: grid; gap: 14px; }
     label { gap: 6px; }
-    input, textarea {
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
-      font: inherit;
-      padding: 8px 10px;
-      width: 100%;
-    }
     textarea { min-height: 320px; resize: vertical; }
     .field-grid, .actions {
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    button, .button, .secondary {
-      align-items: center;
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
-      cursor: pointer;
-      display: inline-flex;
-      font: inherit;
-      font-weight: 500;
-      justify-content: center;
-      min-height: 38px;
-      padding: 0 14px;
-      text-decoration: none;
-    }
-    button, .button {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #ffffff;
-    }
-    .secondary { background: transparent; color: var(--accent-strong); }
-    .ghost { background: transparent; border-color: var(--line); color: var(--warn); }
     .provenance ul, .provenance ol {
       display: grid;
       gap: 10px;
@@ -309,65 +314,81 @@ def render_inbox_review(user: User, job: Job, *, error: str | None = None) -> HT
     .provenance span, .provenance a { overflow-wrap: anywhere; }
     .error { color: var(--warn); }
     @media (max-width: 800px) {
-      .review-layout, .field-grid, .actions { grid-template-columns: 1fr; }
+      .field-grid, .actions { grid-template-columns: 1fr; }
     }
     """
     body = f"""
-    <div class="review-layout">
-      <section>
-        <h2>Opportunity fields</h2>
-        <p class="hint">These edits update the Inbox candidate only. The item stays in Inbox until you accept or dismiss it.</p>
-        <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/review">
-          {error_block}
+    <section class="page-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-micro">Candidate fields</p>
+          <h2>Opportunity fields</h2>
+        </div>
+        <span class="status-pill accent">Editable before accept</span>
+      </div>
+      <p class="hint">These edits update the Inbox candidate only. The item stays in Inbox until you accept or dismiss it.</p>
+      <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/review">
+        {error_block}
+        <label>
+          Title
+          <input name="title" maxlength="300" required value="{escape(job.title, quote=True)}">
+        </label>
+        <div class="field-grid">
           <label>
-            Title
-            <input name="title" maxlength="300" required value="{escape(job.title, quote=True)}">
+            Company
+            <input name="company" maxlength="300" value="{escape(job.company or "", quote=True)}">
           </label>
-          <div class="field-grid">
-            <label>
-              Company
-              <input name="company" maxlength="300" value="{escape(job.company or "", quote=True)}">
-            </label>
-            <label>
-              Location
-              <input name="location" maxlength="300" value="{escape(job.location or "", quote=True)}">
-            </label>
-            <label>
-              Source
-              <input name="source" maxlength="100" value="{escape(job.source or "", quote=True)}">
-            </label>
-            <label>
-              Source or apply URL
-              <input name="source_url" maxlength="2048" value="{escape(source_url, quote=True)}">
-            </label>
-          </div>
           <label>
-            Description
-            <textarea name="description_raw">{escape(job.description_raw or "")}</textarea>
+            Location
+            <input name="location" maxlength="300" value="{escape(job.location or "", quote=True)}">
           </label>
-          <div class="actions">
-            <button type="submit">Save review</button>
-            <a class="secondary" href="/jobs/{escape(job.uuid, quote=True)}">Open workspace</a>
+          <label>
+            Source
+            <input name="source" maxlength="100" value="{escape(job.source or "", quote=True)}">
+          </label>
+          <label>
+            Source or apply URL
+            <input name="source_url" maxlength="2048" value="{escape(source_url, quote=True)}">
+          </label>
+        </div>
+        <label>
+          Description
+          <textarea name="description_raw">{escape(job.description_raw or "")}</textarea>
+        </label>
+        <div class="actions">
+          <button type="submit">Save review</button>
+          <a class="secondary" href="/jobs/{escape(job.uuid, quote=True)}">Open workspace</a>
+        </div>
+      </form>
+    </section>
+    """
+    aside = f"""
+    <aside class="provenance">
+      <section class="page-panel soft">
+        <div class="panel-header">
+          <div>
+            <p class="panel-micro">Captured context</p>
+            <h2>Provenance</h2>
           </div>
-        </form>
+        </div>
+        {_provenance_summary(job)}
       </section>
-      <aside class="provenance">
-        <section>
-          <h2>Captured context</h2>
-          {_provenance_summary(job)}
-        </section>
-        <section>
-          <h2>Decision</h2>
-          <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/accept">
-            <button type="submit">Accept to Interested</button>
-          </form>
-          <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/dismiss">
-            <button class="ghost" type="submit">Dismiss and archive</button>
-          </form>
-          <a class="secondary" href="/inbox">Back to Inbox</a>
-        </section>
-      </aside>
-    </div>
+      <section class="page-panel emphasis">
+        <div class="panel-header">
+          <div>
+            <p class="panel-micro">Decision</p>
+            <h2>Promote or dismiss</h2>
+          </div>
+        </div>
+        <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/accept">
+          <button type="submit">Accept to Interested</button>
+        </form>
+        <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/dismiss">
+          <button class="ghost" type="submit">Dismiss and archive</button>
+        </form>
+        <a class="secondary" href="/inbox">Back to Inbox</a>
+      </section>
+    </aside>
     """
     return HTMLResponse(
         render_shell_page(
@@ -377,7 +398,9 @@ def render_inbox_review(user: User, job: Job, *, error: str | None = None) -> HT
             subtitle="Clean up extracted fields before accepting or dismissing",
             active="inbox",
             body=body,
-            container="standard",
+            aside=aside,
+            kicker="Review surface",
+            container="workspace",
             extra_styles=extra_styles,
         )
     )
@@ -526,31 +549,51 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
     .error { color: var(--warn); }
     """
     body = f"""
-    <form method="post" action="/inbox/email">
-      {error_block}
-      <label>
-        Subject
-        <input name="subject" maxlength="500" required>
-      </label>
-      <label>
-        Sender
-        <input name="sender" maxlength="500" placeholder="jobs@example.com">
-      </label>
-      <label>
-        Received
-        <input name="received_at" type="datetime-local">
-      </label>
-      <label>
-        Plain text body
-        <textarea name="body_text" placeholder="Paste the email body here"></textarea>
-      </label>
-      <label>
-        HTML body
-        <textarea name="body_html" placeholder="Optional raw HTML"></textarea>
-      </label>
-      <p class="hint">The first meaningful job URL becomes the source link. Raw email content is preserved for later review and provider integrations.</p>
-      <button type="submit">Add to Inbox</button>
-    </form>
+    <section class="page-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-micro">Manual intake</p>
+          <h2>Paste a recruiter or job-board email</h2>
+        </div>
+        <span class="status-pill accent">Inbox first</span>
+      </div>
+      <form method="post" action="/inbox/email">
+        {error_block}
+        <label>
+          Subject
+          <input name="subject" maxlength="500" required>
+        </label>
+        <label>
+          Sender
+          <input name="sender" maxlength="500" placeholder="jobs@example.com">
+        </label>
+        <label>
+          Received
+          <input name="received_at" type="datetime-local">
+        </label>
+        <label>
+          Plain text body
+          <textarea name="body_text" placeholder="Paste the email body here"></textarea>
+        </label>
+        <label>
+          HTML body
+          <textarea name="body_html" placeholder="Optional raw HTML"></textarea>
+        </label>
+        <p class="hint">The first meaningful job URL becomes the source link. Raw email content is preserved for later review and provider integrations.</p>
+        <button type="submit">Add to Inbox</button>
+      </form>
+    </section>
+    """
+    aside = """
+    <section class="page-panel emphasis">
+      <div class="panel-header">
+        <div>
+          <p class="panel-micro">Why start here</p>
+          <h2>Email belongs in Inbox first</h2>
+        </div>
+      </div>
+      <p>Paste the interesting signal, then review the extracted candidate before it becomes active work. This keeps provenance visible and the board clean.</p>
+    </section>
     """
     return HTMLResponse(
         render_shell_page(
@@ -560,7 +603,9 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
             subtitle="Add an interesting job email to Inbox",
             active="inbox",
             body=body,
-            container="standard",
+            aside=aside,
+            kicker="Capture",
+            container="workspace",
             extra_styles=extra_styles,
         )
     )

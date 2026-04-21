@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from app.auth.users import create_local_user
@@ -128,5 +129,35 @@ def test_focus_shows_owner_scoped_attention_items(tmp_path: Path, monkeypatch) -
         assert "Other user role" not in response.text
         assert "Hidden archived follow-up" not in response.text
         assert "Archived follow-up role" not in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_focus_goal_chip_formats_salary_as_rounded_thousands(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            db.add(
+                UserProfile(
+                    owner_user_id=user.id,
+                    target_roles="Engineering Manager",
+                    target_locations="Remote",
+                    salary_min=Decimal("100000.00"),
+                    salary_max=Decimal("125000.00"),
+                    salary_currency="GBP",
+                )
+            )
+            db.commit()
+        login(client, "jobseeker@example.com")
+
+        response = client.get("/focus")
+
+        assert response.status_code == 200
+        assert "GBP 100K" in response.text
+        assert "GBP 125K" in response.text
+        assert "100000.00" not in response.text
+        assert "125000.00" not in response.text
     finally:
         app.dependency_overrides.clear()

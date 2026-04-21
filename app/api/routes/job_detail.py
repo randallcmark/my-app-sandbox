@@ -832,12 +832,6 @@ def _next_board_position(db: DbSession, user: User, job_status: str) -> int:
 
 def render_new_job(user: User) -> str:
     extra_styles = """
-    section {
-      background: var(--panel);
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
-      padding: 18px;
-    }
     h1 { font-size: 2rem; line-height: 1.1; }
     .job-form { display: grid; gap: 14px; }
     .inline-fields {
@@ -876,8 +870,9 @@ def render_new_job(user: User) -> str:
         title="Add job",
         subtitle="Create an intentional job entry",
         active=None,
-        body=f"<section>{_new_job_form()}</section>",
-        container="standard",
+        body=f'<section class="page-panel">{_new_job_form()}</section>',
+        kicker="Manual entry",
+        container="workspace",
         extra_styles=extra_styles,
     )
 
@@ -960,13 +955,14 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
     }}
 
     .workspace-hero {{
-      background: var(--panel);
-      border: 0.5px solid var(--line);
-      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-2xl);
+      box-shadow: var(--shadow-md);
       display: grid;
       gap: 16px;
       margin-bottom: 18px;
-      padding: 22px;
+      padding: 24px;
     }}
 
     .hero-meta,
@@ -997,15 +993,10 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
       gap: 18px;
     }}
 
-    section {{
-      background: var(--panel);
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
-      padding: 18px;
-    }}
-
     .workspace-panel {{
-      border-radius: 14px;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--line-soft);
+      box-shadow: var(--shadow-md);
       padding: 20px;
     }}
 
@@ -1082,8 +1073,8 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
 
     .button-link {{
       align-items: center;
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
       color: var(--ink);
       display: inline-flex;
       justify-content: center;
@@ -1093,8 +1084,8 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
     }}
 
     .button-link.primary {{
-      background: var(--accent);
-      border-color: var(--accent);
+      background: linear-gradient(180deg, #2a81e7, var(--accent));
+      border-color: #1b6fce;
       color: #ffffff;
     }}
 
@@ -1262,8 +1253,9 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
 
     .savebar {{
       align-items: center;
-      background: var(--ink);
-      border-radius: 10px;
+      background: rgba(31, 52, 71, 0.96);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
       bottom: 18px;
       color: #ffffff;
       display: none;
@@ -1654,6 +1646,8 @@ def render_job_detail(job: Job, *, available_artefacts: list[Artefact] | None = 
         active=None,
         actions=(("Add job", "/jobs/new", "add-job"),),
         body=body,
+        kicker="Execution surface",
+        goal=f"<span>Company:</span> <strong>{escape(job.company or 'Not set')}</strong> | <span>{escape(job.status)}</span>",
         container="standard",
         extra_styles=extra_styles,
         scripts=scripts,

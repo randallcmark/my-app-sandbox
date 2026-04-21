@@ -11,7 +11,7 @@ Status key:
 - Planned: not started or needs a substantial rebuild.
 - Deferred: intentionally out of scope until the core product is stable.
 
-Last planning update: 2026-04-19
+Last planning update: 2026-04-20
 
 ---
 
@@ -75,6 +75,8 @@ As of 2026-04-19, the app is verified through:
   routed to review before they appear in active workflow views.
 - Manual paste email-to-Inbox foundation with email provenance records, deterministic URL
   extraction, dedupe by source URL, and `/inbox/email/new`.
+- Inbox review/enrichment page for correcting title, company, location, source/apply URL, and
+  description before acceptance while preserving captured provenance.
 - Job Workspace first refresh: job detail is now organised around a workspace header, next action,
   role overview, readable description, readiness, activity, contextual actions, collapsed
   provenance, and collapsed journal.
@@ -90,14 +92,16 @@ As of 2026-04-19, the app is verified through:
   Admin/API Docs.
 - Authenticated Help page with workflow guidance for Focus, Inbox, Board, Job Workspace, Artefacts,
   Capture, Settings/privacy, and admin operations.
+- Phase 2.5 responsive shell manually verified on desktop, mobile portrait, and mobile landscape:
+  desktop retains the multi-column workspace style, while mobile presents a single continuous form
+  column.
 - Embedded AI readiness schema and settings placeholders, with owner-scoped provider records and
   visible AI output records. No secrets are stored and no provider calls are made.
 
 Known next product focus:
 
-- Phase 2.5 follow-up: manual mobile portrait validation and any resulting refinements to large
-  forms, tables, board lanes, and job workspace controls.
-- Phase 3 follow-up: provider-backed email ingestion and richer enrich/review handling.
+- Phase 3 follow-up: multi-candidate email review, provider-backed email ingestion, and richer
+  review handling.
 - Phase 4 follow-up: continue improving Job Workspace execution flows where external systems are
   involved.
 - Phase 5 follow-up: application/interview-level artefact associations, extraction, and suggestions.

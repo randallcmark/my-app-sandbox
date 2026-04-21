@@ -59,14 +59,14 @@ Test expectations:
 
 Goal: make every page feel like part of one product and usable across desktop, tablet, and mobile.
 
-Status: implemented for the core authenticated server-rendered surfaces. A shared shell now
+Status: implemented and manually verified for the core authenticated server-rendered surfaces. A shared shell now
 provides a consistent product anchor, stable page framing, primary workflow navigation, page action
 links, and a user-context menu across Focus, Inbox, Paste email, Artefacts, Board, Job Workspace,
 Add Job, Settings, Capture setup, Help, and Admin. User-context operations now live under the
 top-right username menu: User Settings, Capture Settings, Help, Sign out, and Admin/API Docs for
 admin users. The first responsive hardening pass improves mobile navigation, board workflow
 controls, job workspace editing/save controls, tables, and stacked actions. Manual browser testing
-at narrow portrait widths remains follow-up work.
+has passed on desktop, mobile portrait, and mobile landscape layouts.
 
 Implementation targets:
 
@@ -101,13 +101,14 @@ Test expectations:
   Job Workspace, Artefacts, Settings, Capture setup, Help, and Admin.
 - Current regression coverage: Focus, Inbox, Artefacts, Board, Job Workspace, Capture setup,
   Settings, Help, and Admin route tests.
-- Browser/manual tests at desktop, tablet, and mobile portrait widths. Still required after CSS
-  hardening.
+- Browser/manual tests passed at desktop, mobile portrait, and mobile landscape widths.
 - Regression tests for fixed/sticky controls where present.
 
 ## Phase 3: Inbox And Intake Semantics
 
-Status: implemented for browser/API capture and the first manual paste email-to-Inbox slice. Provider-backed email ingestion and system recommendations remain planned follow-ons.
+Status: implemented for browser/API capture, the first manual paste email-to-Inbox slice, and
+Inbox review/enrichment before acceptance. Provider-backed email ingestion, multi-candidate email
+review, and system recommendations remain planned follow-ons.
 
 Goal: separate unreviewed intake from intentional prospects.
 

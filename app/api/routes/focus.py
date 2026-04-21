@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 from html import escape
 from typing import Annotated
 
@@ -45,6 +46,16 @@ def _profile_is_empty(profile: UserProfile | None) -> bool:
             profile.positioning_notes,
         )
     )
+
+
+def _format_salary_goal(value: Decimal | None, currency: str | None) -> str:
+    if value is None:
+        return ""
+    rounded_thousands = int((value / Decimal("1000")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    amount = f"{rounded_thousands}K"
+    if currency:
+        return f"{currency} {amount}"
+    return amount
 
 
 def _list_due_followups(db: DbSession, user: User, *, now: datetime) -> list[Communication]:
@@ -164,17 +175,23 @@ def _interview_item(interview: InterviewEvent) -> str:
 
 def _section(title: str, body: str) -> str:
     return f"""
-    <section>
-      <h2>{escape(title)}</h2>
+    <article class="focus-card">
+      <div class="card-header">
+        <div>
+          <p class="panel-micro">Focus queue</p>
+          <h2>{escape(title)}</h2>
+        </div>
+        <span class="status-pill accent">Now</span>
+      </div>
       {body}
-    </section>
+    </article>
     """
 
 
 def _list(items: list[str], empty_message: str) -> str:
     if not items:
         return _empty(empty_message)
-    return "<ul>" + "\n".join(items) + "</ul>"
+    return '<ul class="focus-list">' + "\n".join(items) + "</ul>"
 
 
 def render_focus(
@@ -187,10 +204,38 @@ def render_focus(
     interviews: list[InterviewEvent],
     active_count: int,
 ) -> HTMLResponse:
+    goal = None
+    if profile and (profile.target_roles or profile.target_locations or profile.salary_min or profile.salary_max):
+        goal_bits = ['<span class="goal-chip-label">Target:</span>']
+        if profile.target_roles:
+            goal_bits.append(f'<strong class="goal-chip-primary">{escape(profile.target_roles)}</strong>')
+        if profile.target_locations:
+            goal_bits.append('<span class="goal-chip-sep secondary">|</span>')
+            goal_bits.append(f'<span class="goal-chip-secondary">{escape(profile.target_locations)}</span>')
+        if profile.salary_min or profile.salary_max:
+            salary = " / ".join(
+                part
+                for part in (
+                    _format_salary_goal(profile.salary_min, profile.salary_currency),
+                    _format_salary_goal(profile.salary_max, profile.salary_currency),
+                )
+                if part
+            )
+            if salary:
+                goal_bits.append('<span class="goal-chip-sep tertiary">|</span>')
+                goal_bits.append(f'<span class="goal-chip-tertiary">{escape(salary)}</span>')
+        goal = "".join(goal_bits)
+
     profile_prompt = (
         """
-        <section class="prompt">
-          <h2>Complete your job-search profile</h2>
+        <section class="page-panel ai prompt">
+          <div class="panel-header">
+            <div>
+              <p class="panel-micro">Profile signal</p>
+              <h2>Complete your job-search profile</h2>
+            </div>
+            <span class="status-pill accent">Useful next</span>
+          </div>
           <p>Focus will become more useful when it knows your target roles, locations, constraints, and positioning notes.</p>
           <a class="button" href="/settings#profile">Add profile</a>
         </section>
@@ -203,64 +248,109 @@ def render_focus(
     recent_items = [_job_item(job, detail=f"Added {_value(job.created_at)}") for job in recent_jobs]
     interview_items = [_interview_item(interview) for interview in interviews]
     extra_styles = compact_content_rhythm_styles() + """
-    p, span, .empty { color: var(--muted); }
-    .button {
-      background: var(--accent);
-      border: 0.5px solid var(--accent);
-      border-radius: 10px;
-      color: #ffffff;
-      display: inline-flex;
-      padding: 8px 10px;
-      text-decoration: none;
-      width: max-content;
+    .focus-summary {
+      margin-bottom: 18px;
     }
-    .summary {
+    .focus-grid {
       display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      margin-bottom: 16px;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .stat {
-      background: var(--panel);
-      border: 0.5px solid var(--line);
-      border-radius: 10px;
-      padding: 16px;
+    .focus-card {
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      display: grid;
+      gap: 14px;
+      padding: 18px;
     }
-    .stat strong {
-      display: block;
-      font-size: 1.8rem;
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-    .grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .prompt { border-color: var(--accent); margin-bottom: 16px; }
-    ul {
+    .focus-list {
       display: grid;
       gap: 10px;
       list-style: none;
-      margin: 12px 0 0;
+      margin: 0;
       padding: 0;
     }
-    li {
-      border-top: 0.5px solid var(--line);
+    .focus-list li {
+      background: rgba(247,249,252,0.92);
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius-lg);
       display: grid;
       gap: 4px;
-      padding-top: 10px;
+      padding: 14px;
     }
-    li strong { font-size: 1rem; }
+    .focus-list li strong { font-size: 1rem; }
+    .focus-list li span,
+    .focus-list li p,
+    .empty { color: var(--muted); }
+    .focus-aside {
+      display: grid;
+      gap: 18px;
+    }
+    .tip-list {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .tip-list li {
+      border-left: 3px solid rgba(255,255,255,0.28);
+      padding-left: 10px;
+    }
+    .empty {
+      background: rgba(247,249,252,0.92);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+    }
     @media (max-width: 760px) {
-      .summary, .grid { grid-template-columns: 1fr; }
+      .focus-grid { grid-template-columns: 1fr; }
     }
+    """
+    aside = f"""
+    <div class="focus-aside">
+      <section class="page-panel soft">
+        <div class="panel-header">
+          <div>
+            <p class="panel-micro">Resume</p>
+            <h2>Where to resume</h2>
+          </div>
+          <a class="secondary" href="/board">Board</a>
+        </div>
+        <p>Use Focus for the next decision, then jump into Board or Job Workspace to keep the application moving.</p>
+        <div class="mobile-stack">
+          <span class="status-pill accent">{len(due_followups)} due follow-ups</span>
+          <span class="status-pill warn">{len(stale_jobs)} stale jobs</span>
+          <span class="status-pill success">{len(interviews)} interviews</span>
+        </div>
+      </section>
+      <section class="page-panel emphasis">
+        <div class="panel-header">
+          <div>
+            <p class="panel-micro">Daily rhythm</p>
+            <h2>Keep the loop tight</h2>
+          </div>
+        </div>
+        <p>Start with follow-ups, review what has gone stale, and end by deciding whether new prospects belong in the workflow.</p>
+        <ul class="tip-list">
+          <li>Review Inbox before adding new manual jobs.</li>
+          <li>Use Job Workspace when a role needs execution, not just status movement.</li>
+          <li>Record return notes after external actions so Focus stays trustworthy.</li>
+        </ul>
+      </section>
+    </div>
     """
     body = f"""
     {profile_prompt}
-    <div class="summary" aria-label="Focus summary">
-      <div class="stat"><strong>{len(due_followups)}</strong><span>Due follow-ups</span></div>
-      <div class="stat"><strong>{len(stale_jobs)}</strong><span>Stale jobs</span></div>
-      <div class="stat"><strong>{len(interviews)}</strong><span>Upcoming interviews</span></div>
-      <div class="stat"><strong>{active_count}</strong><span>Active jobs</span></div>
+    <div class="metric-grid focus-summary" aria-label="Focus summary">
+      <div class="metric-card"><strong>{len(due_followups)}</strong><span>Due follow-ups</span></div>
+      <div class="metric-card"><strong>{len(stale_jobs)}</strong><span>Stale jobs</span></div>
+      <div class="metric-card"><strong>{len(interviews)}</strong><span>Upcoming interviews</span></div>
+      <div class="metric-card"><strong>{active_count}</strong><span>Active jobs</span></div>
     </div>
-    <div class="grid">
+    <div class="focus-grid">
       {_section("Due follow-ups", _list(due_items, "No due follow-ups."))}
       {_section("Stale active jobs", _list(stale_items, "No stale active jobs."))}
       {_section("Upcoming interviews", _list(interview_items, "No upcoming interviews."))}
@@ -276,7 +366,10 @@ def render_focus(
             active="focus",
             actions=(("Add job", "/jobs/new", "add-job"),),
             body=body,
-            container="standard",
+            aside=aside,
+            goal=goal,
+            kicker="Daily command surface",
+            container="split",
             extra_styles=extra_styles,
         )
     )

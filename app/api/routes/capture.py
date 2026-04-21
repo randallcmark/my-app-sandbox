@@ -137,6 +137,7 @@ def render_bookmarklet_setup(request: Request, user: User) -> str:
         subtitle="Configure bookmarklet and extension capture",
         active="capture",
         body=body,
+        kicker="Capture",
         container="standard",
         extra_styles=extra_styles,
         scripts=scripts,

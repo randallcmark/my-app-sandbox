@@ -15,7 +15,7 @@ from sqlalchemy.engine import make_url
 
 from app.api.deps import DbSession, get_current_user, require_admin
 from app.api.routes.auth import authenticate_local_user, create_login_session
-from app.api.routes.ui import compact_content_rhythm_styles, render_shell_page
+from app.api.routes.ui import compact_content_rhythm_styles, render_public_shell_page, render_shell_page
 from app.auth.api_tokens import (
     CAPTURE_JOBS_SCOPE,
     create_user_api_token,
@@ -52,255 +52,74 @@ def _form_value(value: object) -> str:
 
 def login_page(*, error: str | None = None) -> HTMLResponse:
     error_block = f'<p class="error">{escape(error)}</p>' if error else ""
+    extra_styles = """
+    .auth-panel form { display: grid; gap: 14px; }
+    .auth-panel .page-subtitle { max-width: none; }
+    """
+    body = f"""
+    <section class="auth-panel">
+      <form method="post" action="/login">
+        {error_block}
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label>
+          Password
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+    """
     return HTMLResponse(
-        f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Login - Application Tracker</title>
-  <style>
-    :root {{
-      color-scheme: light;
-      --page: #f9f9f7;
-      --panel: #ffffff;
-      --ink: #111111;
-      --muted: #5f5e5a;
-      --line: rgba(0, 0, 0, 0.10);
-      --accent: #4f67e4;
-      --accent-strong: #2d3a9a;
-      --error: #a43d2b;
-    }}
-
-    * {{
-      box-sizing: border-box;
-    }}
-
-    body {{
-      align-items: center;
-      background: var(--page);
-      color: var(--ink);
-      display: grid;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      min-height: 100vh;
-      padding: 24px;
-    }}
-
-    main {{
-      margin: 0 auto;
-      max-width: 420px;
-      width: 100%;
-    }}
-
-    h1 {{
-      font-size: 2rem;
-      line-height: 1.1;
-      margin: 0 0 8px;
-    }}
-
-    p {{
-      color: var(--muted);
-      line-height: 1.45;
-      margin: 0 0 20px;
-    }}
-
-    form {{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      display: grid;
-      gap: 14px;
-      padding: 20px;
-    }}
-
-    label {{
-      display: grid;
-      font-weight: 500;
-      gap: 6px;
-    }}
-
-    input {{
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      font: inherit;
-      min-height: 42px;
-      padding: 8px 10px;
-      width: 100%;
-    }}
-
-    button {{
-      background: var(--accent);
-      border: 0;
-      border-radius: 8px;
-      color: #ffffff;
-      cursor: pointer;
-      font: inherit;
-      font-weight: 500;
-      min-height: 44px;
-    }}
-
-    button:hover {{
-      background: var(--accent-strong);
-    }}
-
-    .error {{
-      color: var(--error);
-      font-weight: 500;
-      margin: 0;
-    }}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Application Tracker</h1>
-    <p>Sign in to manage your job search.</p>
-    <form method="post" action="/login">
-      {error_block}
-      <label>
-        Email
-        <input name="email" type="email" autocomplete="email" required>
-      </label>
-      <label>
-        Password
-        <input name="password" type="password" autocomplete="current-password" required>
-      </label>
-      <button type="submit">Sign in</button>
-    </form>
-  </main>
-</body>
-</html>"""
+        render_public_shell_page(
+            page_title="Login",
+            title="Application Tracker",
+            subtitle="Sign in to manage your job search.",
+            body=body,
+            extra_styles=extra_styles,
+        )
     )
 
 
 def setup_page(*, error: str | None = None) -> HTMLResponse:
     error_block = f'<p class="error">{escape(error)}</p>' if error else ""
+    extra_styles = """
+    .auth-panel form { display: grid; gap: 14px; }
+    """
+    body = f"""
+    <section class="auth-panel">
+      <form method="post" action="/setup">
+        {error_block}
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label>
+          Display name
+          <input name="display_name" autocomplete="name" maxlength="200">
+        </label>
+        <label>
+          Password
+          <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <label>
+          Confirm password
+          <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
+        </label>
+        <button type="submit">Create admin</button>
+      </form>
+    </section>
+    """
     return HTMLResponse(
-        f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Set Up - Application Tracker</title>
-  <style>
-    :root {{
-      color-scheme: light;
-      --page: #f9f9f7;
-      --panel: #ffffff;
-      --ink: #111111;
-      --muted: #5f5e5a;
-      --line: rgba(0, 0, 0, 0.10);
-      --accent: #4f67e4;
-      --accent-strong: #2d3a9a;
-      --error: #a43d2b;
-    }}
-
-    * {{
-      box-sizing: border-box;
-    }}
-
-    body {{
-      align-items: center;
-      background: var(--page);
-      color: var(--ink);
-      display: grid;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      min-height: 100vh;
-      padding: 24px;
-    }}
-
-    main {{
-      margin: 0 auto;
-      max-width: 480px;
-      width: 100%;
-    }}
-
-    h1 {{
-      font-size: 2rem;
-      line-height: 1.1;
-      margin: 0 0 8px;
-    }}
-
-    p {{
-      color: var(--muted);
-      line-height: 1.45;
-      margin: 0 0 20px;
-    }}
-
-    form {{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      display: grid;
-      gap: 14px;
-      padding: 20px;
-    }}
-
-    label {{
-      display: grid;
-      font-weight: 500;
-      gap: 6px;
-    }}
-
-    input {{
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      font: inherit;
-      min-height: 42px;
-      padding: 8px 10px;
-      width: 100%;
-    }}
-
-    button {{
-      background: var(--accent);
-      border: 0;
-      border-radius: 8px;
-      color: #ffffff;
-      cursor: pointer;
-      font: inherit;
-      font-weight: 500;
-      min-height: 44px;
-    }}
-
-    button:hover {{
-      background: var(--accent-strong);
-    }}
-
-    .error {{
-      color: var(--error);
-      font-weight: 500;
-      margin: 0;
-    }}
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Set up Application Tracker</h1>
-    <p>Create the first local administrator. This page is only available before any users exist.</p>
-    <form method="post" action="/setup">
-      {error_block}
-      <label>
-        Email
-        <input name="email" type="email" autocomplete="email" required>
-      </label>
-      <label>
-        Display name
-        <input name="display_name" autocomplete="name" maxlength="200">
-      </label>
-      <label>
-        Password
-        <input name="password" type="password" autocomplete="new-password" minlength="8" required>
-      </label>
-      <label>
-        Confirm password
-        <input name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
-      </label>
-      <button type="submit">Create admin</button>
-    </form>
-  </main>
-</body>
-</html>"""
+        render_public_shell_page(
+            page_title="Set Up",
+            title="Set up Application Tracker",
+            subtitle="Create the first local administrator. This page is only available before any users exist.",
+            body=body,
+            extra_styles=extra_styles,
+        )
     )
 
 
@@ -603,6 +422,7 @@ def settings_page(
             subtitle="Profile, AI placeholders, and capture tokens",
             active="settings",
             body=body,
+            kicker="User context",
             container="standard",
             extra_styles=extra_styles,
         )
@@ -763,6 +583,7 @@ def admin_page(
             subtitle="Self-hosted operations and capture token management",
             active="admin",
             body=body,
+            kicker="Operations",
             container="standard",
             extra_styles=extra_styles,
         )
@@ -928,6 +749,7 @@ def help_page(user: User) -> HTMLResponse:
             subtitle="How to use Application Tracker",
             active=None,
             body=body,
+            kicker="Product guide",
             container="standard",
             extra_styles=extra_styles,
         )

@@ -46,7 +46,12 @@ Dismiss:
 
 Review:
 
-- opens the job detail page without changing intake state.
+- opens a dedicated Inbox review page without changing intake state;
+- lets the user clean up title, company, location, source, source/apply URL, and description;
+- preserves captured provenance separately from the edited fields;
+- records an `Inbox enriched` journal entry when fields change.
+
+Accepting after review uses the edited candidate fields.
 
 ## Email Capture
 
@@ -99,3 +104,7 @@ duplicate job.
 8. Confirm it disappears from Inbox and is archived.
 9. Paste a job-board email at `/inbox/email/new`.
 10. Confirm the pasted email job appears in Inbox and stays out of Prospects until accepted.
+11. Open Review for the pasted email job.
+12. Edit title, company, location, source/apply URL, or description.
+13. Save review and confirm captured context remains visible.
+14. Accept the reviewed job and confirm the active job uses the edited values.
