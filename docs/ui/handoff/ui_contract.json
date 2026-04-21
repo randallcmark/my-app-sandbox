@@ -1,0 +1,46 @@
+{
+  "name": "Application Tracker desktop mockup",
+  "intent": "Focus-first AI-assisted job seeker workspace",
+  "surfaces": [
+    "Top navigation",
+    "Focus action stack",
+    "Resume prompt strip",
+    "Recent work mini-panels",
+    "AI recommendation rail",
+    "AI tip card"
+  ],
+  "layout": {
+    "mode": "desktop",
+    "columns": {
+      "main": "flexible",
+      "sidebar": "420px"
+    }
+  },
+  "interactionModel": {
+    "homeMode": "focus",
+    "secondaryModes": [
+      "board",
+      "workspace"
+    ],
+    "primaryActions": [
+      "send email",
+      "nudge status",
+      "review prep",
+      "quick review",
+      "view job",
+      "apply now",
+      "edit resume"
+    ]
+  },
+  "contentModel": {
+    "leftColumn": [
+      "daily action cards",
+      "artefact reminder",
+      "recent work previews"
+    ],
+    "rightColumn": [
+      "AI recommendations",
+      "AI coaching prompt"
+    ]
+  }
+}

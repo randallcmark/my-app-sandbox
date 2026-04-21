@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1' />
+  <title>Application Tracker UI Mockup - Inspectable Reconstruction</title>
+  <link rel='stylesheet' href='./handoff/styles.css' />
+</head>
+<body>
+  <div class='backdrop-hills'></div>
+
+  <div class='window'>
+    <header class='topbar'>
+      <div class='nav-left'>
+        <div class='hamburger' aria-hidden='true'></div>
+        <nav class='tabs' aria-label='Primary'>
+          <a class='tab active' href='#'>Focus</a>
+          <a class='tab' href='#'>Board</a>
+          <a class='tab' href='#'>Workspace</a>
+        </nav>
+      </div>
+
+      <div class='goal-chip'>
+        <span>Target:</span>
+        <strong>Senior Product Manager</strong>
+        <span>| Remote | $120k+</span>
+      </div>
+
+      <div class='actions'>
+        <a class='btn' href='#'><span style='font-size:18px;line-height:1'>＋</span> Add Job <span style='color:var(--text-soft)'>▾</span></a>
+        <div class='icon-btn' aria-label='Alerts'>🔔</div>
+        <div class='icon-btn' aria-label='Notifications'>🔔<span class='badge'>1</span></div>
+        <div class='avatar' aria-label='Profile'>SR</div>
+        <div class='icon-btn' aria-label='Menu'>⌄</div>
+      </div>
+    </header>
+
+    <main class='content'>
+      <section class='main'>
+        <div class='hero'>
+          <h1>Good Morning, Sarah</h1>
+          <p>Here’s what’s next for you.</p>
+        </div>
+
+        <div class='card-stack'>
+          <article class='focus-card'>
+            <div class='focus-card-header'>
+              <div class='focus-card-title'>
+                <span class='status-dot check'></span>
+                <span>Follow Up Today</span>
+              </div>
+              <div class='header-icons'><span>⟲</span><span>⌄</span></div>
+            </div>
+            <div class='focus-card-body'>
+              <div>
+                <div class='focus-line-1'><strong>Acme Corp</strong>: Product Manager</div>
+                <div class='focus-line-2'>Follow up with recruiter</div>
+              </div>
+              <a class='btn primary compact' href='#'>Send Email <span>›</span></a>
+            </div>
+          </article>
+
+          <article class='focus-card'>
+            <div class='focus-card-header'>
+              <div class='focus-card-title'>
+                <span class='status-dot red'></span>
+                <span>Stale Applications</span>
+              </div>
+              <div class='header-icons'><span>⌄</span></div>
+            </div>
+            <div class='focus-card-body'>
+              <div>
+                <div class='focus-line-1'><strong>Globex</strong>: UX Designer</div>
+                <div class='focus-line-2'>Application pending 14 days</div>
+              </div>
+              <a class='btn primary compact' href='#'>Nudge Status <span>›</span></a>
+            </div>
+          </article>
+
+          <article class='focus-card'>
+            <div class='focus-card-header'>
+              <div class='focus-card-title'>
+                <span class='status-dot blue'></span>
+                <span>Upcoming Interviews</span>
+              </div>
+              <div class='header-icons'><span>⌄</span></div>
+            </div>
+            <div class='focus-card-body'>
+              <div>
+                <div class='focus-line-1'><strong>Innovatech</strong> Interview Prep</div>
+                <div class='focus-line-2'>Call Tomorrow at 10:00 AM</div>
+              </div>
+              <a class='btn primary compact' href='#'>Review Prep <span>›</span></a>
+            </div>
+          </article>
+
+          <article class='focus-card'>
+            <div class='focus-card-header'>
+              <div class='focus-card-title'>
+                <span class='status-dot amber'></span>
+                <span>Recently Added</span>
+              </div>
+              <div class='header-icons'><span>⌄</span></div>
+            </div>
+            <div class='focus-card-body'>
+              <div>
+                <div class='focus-line-1'><strong>Vertex Solutions</strong>: Marketing Specialist</div>
+                <div class='focus-line-2'>Review this role</div>
+              </div>
+              <a class='btn primary compact' href='#'>Quick Review <span>›</span></a>
+            </div>
+          </article>
+        </div>
+
+        <section class='resume-bar' aria-label='Resume reminder'>
+          <div class='resume-meta'>
+            <span class='status-dot blue' style='transform:scale(.88)'></span>
+            <strong>Resume Building</strong>
+            <span>Update your resume for recent roles</span>
+          </div>
+          <a class='btn compact' href='#'>Edit Resume <span>›</span></a>
+        </section>
+
+        <section class='mini-grid' aria-label='Recent work surfaces'>
+          <article class='mini-card'>
+            <div class='mini-card-header'>
+              <span>Acme Corp <span style='font-weight:500;color:var(--text-muted)'>Notes</span></span>
+              <span style='color:var(--text-soft)'>⌄</span>
+            </div>
+            <div class='mini-card-body'></div>
+          </article>
+
+          <article class='mini-card'>
+            <div class='mini-card-header'>
+              <span>Globex <span style='font-weight:500;color:var(--text-muted)'>Application</span></span>
+              <span style='color:var(--text-soft)'>⌄</span>
+            </div>
+            <div class='mini-card-body'></div>
+          </article>
+        </section>
+      </section>
+
+      <aside class='sidebar'>
+        <section class='panel'>
+          <div class='panel-header'>
+            <h2 class='panel-title'>AI Job Recommendations</h2>
+            <div style='color:var(--text-soft);font-size:22px;line-height:1'>⋯</div>
+          </div>
+          <p class='panel-subtitle'>Suggested Roles For You</p>
+
+          <div class='rec-list'>
+            <article class='rec-card'>
+              <div class='rec-top'>
+                <div class='rec-avatar'>LP</div>
+                <div class='rec-meta'>
+                  <div class='rec-role'>Lead Product Manager</div>
+                  <div class='rec-company'>TechNova | Remote | $130k</div>
+                </div>
+                <div class='fit'>85% Fit</div>
+              </div>
+              <div class='rec-actions' style='justify-content:end'>
+                <a class='btn primary compact' href='#'>View Job <span>›</span></a>
+              </div>
+            </article>
+
+            <article class='rec-card'>
+              <div class='rec-top'>
+                <div class='rec-avatar'>GM</div>
+                <div class='rec-meta'>
+                  <div class='rec-role'>Growth Marketing Manager</div>
+                  <div class='rec-company'>Skyline Media | Hybrid | $115k</div>
+                </div>
+                <div class='fit'>83% Fit</div>
+              </div>
+              <div class='rec-actions'>
+                <div class='pill-row'>
+                  <span class='pill'>Matched Skills</span>
+                  <span class='pill'>SEO</span>
+                  <span class='pill'>Campaign Strategy</span>
+                </div>
+                <a class='btn primary compact' href='#'>Apply Now</a>
+              </div>
+            </article>
+
+            <article class='rec-card'>
+              <div class='rec-top'>
+                <div class='rec-avatar'>UX</div>
+                <div class='rec-meta'>
+                  <div class='rec-role'>UI/UX Designer</div>
+                  <div class='rec-company'>CreativeWorks | Remote | $110k</div>
+                </div>
+                <div class='fit warn'>81% Fit</div>
+              </div>
+              <div class='rec-actions' style='justify-content:end'>
+                <a class='btn primary compact' href='#'>View Job <span>›</span></a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class='tips-card'>
+          <div class='tips-inner'>
+            <h2 class='tips-title'>AI Tips</h2>
+            <hr />
+            <p class='tips-copy'>Tailor your cover letter to highlight your leadership skills for product management roles.</p>
+            <a class='btn white' href='#'>Get Draft</a>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <section class='notice-panel'>
+      <h2>What this file is</h2>
+      <p>This is an inspectable HTML and CSS reconstruction of the generated mockup, not a literal source extraction from the image. It is intended to be more useful to engineering and Codex because the layout, tokens, and components are real DOM and CSS.</p>
+      <p>The original generated image remains available outside the repo. The repo copy stays text-first so it remains easy to diff, review, and evolve.</p>
+    </section>
+  </div>
+
+  <aside class='inspector'>
+    <details open>
+      <summary>Design tokens</summary>
+      <div class='panel-body'>
+        <pre>{
+  "colors": {
+    "surface": "#ffffff",
+    "line": "#d7dee8",
+    "text": "#1f3447",
+    "textMuted": "#5d7085",
+    "primary": "#1e73d9",
+    "accentRed": "#e25b4c",
+    "accentAmber": "#e39b3d",
+    "accentGreen": "#3ba786"
+  },
+  "layout": {
+    "topbarHeight": 74,
+    "sidebarWidth": 420,
+    "contentGap": 20,
+    "mainPadding": 28
+  }
+}</pre>
+      </div>
+    </details>
+
+    <details>
+      <summary>Layout notes</summary>
+      <div class='panel-body'>
+        <ul>
+          <li>App shell is a single glass-like window over a scenic background.</li>
+          <li>Topbar uses a three-zone layout: nav, goal chip, actions.</li>
+          <li>Main content is a two-column grid: left focus and work area, right AI rail.</li>
+          <li>Primary content rhythm is card-stack based with compact but calm spacing.</li>
+          <li>Buttons are consistently rounded, compact, and visually elevated.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Repo note</summary>
+      <div class='panel-body'>
+        <p>The original screenshot preview was intentionally left out of the repo copy so this artifact stays text-first and Git-friendly.</p>
+        <p>Use this file together with the handoff package in <code>docs/ui/handoff</code>.</p>
+      </div>
+    </details>
+  </aside>
+</body>
+</html>

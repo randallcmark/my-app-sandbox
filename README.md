@@ -31,6 +31,16 @@ The detailed staged roadmap lives in:
 - `docs/PRODUCT_VISION.md`
 - `docs/DELIVERY_PLAN.md`
 
+### Product strategy and design docs
+
+For the current product framing, longer-term opportunity thinking, and UI handoff artifacts, see:
+
+- `docs/product/application_tracker_product_doc_set_index.md`
+- `docs/product/application_tracker_composite_product_vision.md`
+- `docs/product/application_tracker_inbox_monitoring_decision_memo.md`
+- `docs/ui/application_tracker_ui_mockup_inspectable.html`
+- `docs/ui/handoff/README.md`
+
 API token and browser capture examples live in:
 
 - `docs/API_TOKENS_AND_CAPTURE.md`
