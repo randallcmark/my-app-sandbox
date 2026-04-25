@@ -23,6 +23,7 @@ from app.db.models.user import User
 from app.services.ai import (
     AiExecutionError,
     generate_job_ai_output,
+    generate_job_artefact_draft,
     generate_job_artefact_suggestion,
     generate_job_artefact_tailoring_guidance,
 )
@@ -33,6 +34,7 @@ from app.services.artefacts import (
     link_artefact_to_job,
     linked_artefacts_for_job,
     list_user_unlinked_artefacts_for_job,
+    update_artefact_metadata,
     store_job_artefact,
 )
 from app.services.interviews import schedule_interview
@@ -595,6 +597,9 @@ def _tailoring_guidance_links(
     metadata_note = ""
     if isinstance(metadata_quality, str) and metadata_quality:
         metadata_note = f' <span class="muted">(metadata: {escape(metadata_quality)})</span>'
+    draft_note = ""
+    if source_context.get("draft_handoff_contract") == "artefact_draft_seed_v1":
+        draft_note = '<p class="muted">Prepared for later draft generation from this artefact and guidance.</p>'
     return (
         '<div class="ai-output-links">'
         '<p class="muted">Selected artefact</p>'
@@ -602,11 +607,61 @@ def _tailoring_guidance_links(
         f'<li><a href="/artefacts/{escape(artefact.uuid, quote=True)}/download">{escape(artefact.filename)}</a>'
         f' <span class="muted">({escape(artefact.kind)})</span>{metadata_note}</li>'
         '</ul>'
+        f'{draft_note}'
         '</div>'
     )
 
 
-def _ai_outputs_panel(outputs: list[AiOutput], *, artefact_lookup: dict[str, Artefact] | None = None) -> str:
+def _draft_links(
+    output: AiOutput,
+    artefact_lookup: dict[str, Artefact],
+) -> str:
+    source_context = output.source_context or {}
+    artefact_uuid = source_context.get("artefact_uuid")
+    if not isinstance(artefact_uuid, str) or not artefact_uuid:
+        return ""
+    artefact = artefact_lookup.get(artefact_uuid)
+    if artefact is None:
+        return ""
+    content_mode = source_context.get("content_mode")
+    content_note = ""
+    if isinstance(content_mode, str) and content_mode:
+        content_note = f' <span class="muted">(content: {escape(content_mode)})</span>'
+    confidence_note = ""
+    if content_mode == "metadata_only":
+        confidence_note = (
+            '<p class="muted">Low-confidence draft: generated from artefact metadata, job context, '
+            'and guidance rather than verified document text.</p>'
+        )
+    return (
+        '<div class="ai-output-links">'
+        '<p class="muted">Baseline artefact</p>'
+        '<ul>'
+        f'<li><a href="/artefacts/{escape(artefact.uuid, quote=True)}/download">{escape(artefact.filename)}</a>'
+        f' <span class="muted">({escape(artefact.kind)})</span>{content_note}</li>'
+        '</ul>'
+        f'{confidence_note}'
+        '</div>'
+    )
+
+
+def _draft_output_actions(output: AiOutput) -> str:
+    if output.output_type != "draft" or output.job_id is None:
+        return ""
+    return f"""
+    <div class="ai-output-actions">
+      <form class="inline-action-form" method="post" action="/jobs/{escape(output.job.uuid, quote=True)}/ai-outputs/{output.id}/save-draft">
+        <button class="outline" type="submit">Save as artefact</button>
+      </form>
+    </div>
+    """
+
+
+def _ai_outputs_panel(
+    outputs: list[AiOutput],
+    *,
+    artefact_lookup: dict[str, Artefact] | None = None,
+) -> str:
     if not outputs:
         return '<p class="empty">No AI output yet. Generate a fit summary or recommendation when you want help deciding what to do next.</p>'
     artefact_lookup = artefact_lookup or {}
@@ -618,6 +673,9 @@ def _ai_outputs_panel(outputs: list[AiOutput], *, artefact_lookup: dict[str, Art
             extra_links = _artefact_suggestion_links(output, artefact_lookup)
         elif output.output_type == "tailoring_guidance":
             extra_links = _tailoring_guidance_links(output, artefact_lookup)
+        elif output.output_type == "draft":
+            extra_links = _draft_links(output, artefact_lookup)
+        extra_actions = _draft_output_actions(output)
         cards.append(
             f"""
             <article class="ai-output-card">
@@ -631,6 +689,7 @@ def _ai_outputs_panel(outputs: list[AiOutput], *, artefact_lookup: dict[str, Art
               <p class="muted">From {escape(provider)}</p>
               {_render_ai_markdown(output.body)}
               {extra_links}
+              {extra_actions}
             </article>
             """
         )
@@ -674,6 +733,22 @@ def _artefact(job: Job, artefact: Artefact) -> str:
         <a href="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}">Download</a>
         <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/tailoring-guidance">
           <button class="outline" type="submit">Suggest tailoring changes</button>
+        </form>
+        <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/drafts">
+          <input type="hidden" name="draft_kind" value="resume_draft">
+          <button class="outline" type="submit">Draft tailored resume</button>
+        </form>
+        <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/drafts">
+          <input type="hidden" name="draft_kind" value="cover_letter_draft">
+          <button class="outline" type="submit">Draft cover letter</button>
+        </form>
+        <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/drafts">
+          <input type="hidden" name="draft_kind" value="supporting_statement_draft">
+          <button class="outline" type="submit">Draft supporting statement</button>
+        </form>
+        <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/drafts">
+          <input type="hidden" name="draft_kind" value="attestation_draft">
+          <button class="outline" type="submit">Draft attestation</button>
         </form>
       </div>
     </li>
@@ -2371,6 +2446,137 @@ def create_job_artefact_tailoring_guidance_route(
     db.commit()
     return RedirectResponse(
         url=_job_detail_redirect(job.uuid, ai_status="Tailoring guidance generated"),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/jobs/{job_uuid}/artefacts/{artefact_uuid}/drafts", include_in_schema=False)
+def create_job_artefact_draft_route(
+    job_uuid: str,
+    artefact_uuid: str,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+    draft_kind: Annotated[str, Form()] = "resume_draft",
+) -> RedirectResponse:
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    artefact = get_user_job_artefact_by_uuid(db, current_user, job, artefact_uuid)
+    if artefact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artefact not found")
+    prior_suggestion = db.scalar(
+        select(AiOutput)
+        .where(
+            AiOutput.owner_user_id == current_user.id,
+            AiOutput.job_id == job.id,
+            AiOutput.output_type == "artefact_suggestion",
+            AiOutput.status == "active",
+        )
+        .order_by(AiOutput.updated_at.desc(), AiOutput.created_at.desc())
+    )
+    tailoring_guidance = db.scalar(
+        select(AiOutput)
+        .where(
+            AiOutput.owner_user_id == current_user.id,
+            AiOutput.job_id == job.id,
+            AiOutput.artefact_id == artefact.id,
+            AiOutput.output_type == "tailoring_guidance",
+            AiOutput.status == "active",
+        )
+        .order_by(AiOutput.updated_at.desc(), AiOutput.created_at.desc())
+    )
+    try:
+        generate_job_artefact_draft(
+            db,
+            current_user,
+            job,
+            artefact,
+            draft_kind=draft_kind,
+            profile=get_user_profile(db, current_user),
+            tailoring_guidance=tailoring_guidance,
+            prior_suggestion=prior_suggestion,
+        )
+    except AiExecutionError as exc:
+        db.rollback()
+        return RedirectResponse(
+            url=_job_detail_redirect(job.uuid, ai_error=str(exc)),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    db.commit()
+    return RedirectResponse(
+        url=_job_detail_redirect(job.uuid, ai_status="Draft generated"),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _draft_kind_to_artefact_kind(draft_kind: str | None) -> str:
+    mapping = {
+        "resume_draft": "resume",
+        "cover_letter_draft": "cover_letter",
+        "supporting_statement_draft": "supporting_statement",
+        "attestation_draft": "attestation",
+    }
+    return mapping.get((draft_kind or "").strip(), "other")
+
+
+def _draft_filename(job: Job, draft_kind: str | None) -> str:
+    slug_source = re.sub(r"[^a-z0-9]+", "-", (job.title or "job").strip().lower()).strip("-") or "job"
+    suffix = {
+        "resume_draft": "resume-draft",
+        "cover_letter_draft": "cover-letter-draft",
+        "supporting_statement_draft": "supporting-statement-draft",
+        "attestation_draft": "attestation-draft",
+    }.get((draft_kind or "").strip(), "draft")
+    return f"{slug_source}-{suffix}.md"
+
+
+@router.post("/jobs/{job_uuid}/ai-outputs/{output_id}/save-draft", include_in_schema=False)
+def save_job_draft_as_artefact_route(
+    job_uuid: str,
+    output_id: int,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> RedirectResponse:
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    output = db.scalar(
+        select(AiOutput).where(
+            AiOutput.id == output_id,
+            AiOutput.owner_user_id == current_user.id,
+            AiOutput.job_id == job.id,
+            AiOutput.output_type == "draft",
+            AiOutput.status == "active",
+        )
+    )
+    if output is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+    source_context = output.source_context or {}
+    draft_kind = source_context.get("draft_kind") if isinstance(source_context, dict) else None
+    artefact = store_job_artefact(
+        db,
+        job,
+        kind=_draft_kind_to_artefact_kind(draft_kind if isinstance(draft_kind, str) else None),
+        filename=_draft_filename(job, draft_kind if isinstance(draft_kind, str) else None),
+        content=output.body.encode("utf-8"),
+        content_type="text/markdown",
+    )
+    baseline_uuid = source_context.get("artefact_uuid") if isinstance(source_context, dict) else None
+    notes = f"Saved from AI draft output #{output.id}."
+    if isinstance(baseline_uuid, str) and baseline_uuid:
+        notes += f" Baseline artefact UUID: {baseline_uuid}."
+    update_artefact_metadata(
+        artefact,
+        purpose=output.title or "AI draft",
+        version_label="ai-draft-v1",
+        notes=notes,
+        outcome_context="Generated from visible AI draft output.",
+    )
+    output.source_context = {
+        **source_context,
+        "saved_artefact_uuid": artefact.uuid,
+    }
+    db.commit()
+    return RedirectResponse(
+        url=_job_detail_redirect(job.uuid, ai_status="Draft saved as artefact"),
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

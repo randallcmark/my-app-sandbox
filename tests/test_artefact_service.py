@@ -1,11 +1,18 @@
+import io
 from pathlib import Path
+import zipfile
 
 from app.auth.users import create_local_user
 from app.db.models.application import Application
 from app.db.models.artefact import Artefact
 from app.db.models.job import Job
 from app.main import app
-from app.services.artefacts import list_candidate_artefacts_for_job, summarise_artefact_for_ai
+from app.services.artefacts import (
+    list_candidate_artefacts_for_job,
+    load_artefact_document_payload,
+    load_artefact_text_excerpt,
+    summarise_artefact_for_ai,
+)
 from tests.test_local_auth_routes import build_client
 
 
@@ -176,3 +183,67 @@ def test_summarise_artefact_for_ai_marks_thin_metadata_when_context_is_sparse(
         assert "Missing metadata: purpose, version, notes, outcome context, linked history" in summary.summary_text
     finally:
         app.dependency_overrides.clear()
+
+
+def test_load_artefact_text_excerpt_extracts_docx_text() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            "word/document.xml",
+            (
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                "<w:body><w:p><w:r><w:t>Platform delivery</w:t></w:r></w:p>"
+                "<w:p><w:r><w:t>Stakeholder leadership</w:t></w:r></w:p></w:body></w:document>"
+            ),
+        )
+    artefact = Artefact(
+        kind="resume",
+        filename="baseline.docx",
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        storage_key="artefacts/baseline.docx",
+    )
+
+    excerpt = load_artefact_text_excerpt(
+        artefact,
+        storage=type("FakeStorage", (), {"load": lambda self, key: buffer.getvalue()})(),
+    )
+
+    assert excerpt is not None
+    assert "Platform delivery" in excerpt
+    assert "Stakeholder leadership" in excerpt
+
+
+def test_load_artefact_text_excerpt_extracts_pdf_text_when_adapter_available(monkeypatch) -> None:
+    artefact = Artefact(
+        kind="resume",
+        filename="baseline.pdf",
+        content_type="application/pdf",
+        storage_key="artefacts/baseline.pdf",
+    )
+
+    class FakeProvider:
+        root = Path("/tmp/fake-root")
+
+    monkeypatch.setattr("app.services.artefacts._local_storage_path", lambda artefact, provider: Path("/tmp/fake.pdf"))
+    monkeypatch.setattr("app.services.artefacts._extract_pdf_text", lambda path: "Platform delivery from PDF")
+
+    excerpt = load_artefact_text_excerpt(artefact, storage=FakeProvider())
+
+    assert excerpt == "Platform delivery from PDF"
+
+
+def test_load_artefact_document_payload_returns_pdf_bytes() -> None:
+    artefact = Artefact(
+        kind="resume",
+        filename="baseline.pdf",
+        content_type="application/pdf",
+        storage_key="artefacts/baseline.pdf",
+    )
+
+    payload = load_artefact_document_payload(
+        artefact,
+        storage=type("FakeStorage", (), {"load": lambda self, key: b"%PDF-sample"})(),
+    )
+
+    assert payload == ("application/pdf", b"%PDF-sample")

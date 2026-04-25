@@ -93,6 +93,7 @@ def test_job_detail_renders_owned_job_and_timeline(tmp_path: Path, monkeypatch) 
         assert "Generate fit summary" in response.text
         assert "Suggest next step" in response.text
         assert "Suggest artefacts" in response.text
+        assert "Draft tailored resume" not in response.text
         assert "Role overview" in response.text
         assert "Application readiness" in response.text
         assert "External workflow" in response.text
@@ -265,6 +266,7 @@ def test_job_detail_renders_selected_artefact_link_for_tailoring_guidance(
                         "artefact_uuid": artefact.uuid,
                         "metadata_quality": "thin",
                         "local_fallback": True,
+                        "draft_handoff_contract": "artefact_draft_seed_v1",
                     },
                 )
             )
@@ -281,6 +283,47 @@ def test_job_detail_renders_selected_artefact_link_for_tailoring_guidance(
         assert f'href="/artefacts/{artefact_uuid}/download"' in response.text
         assert "tailored-resume.pdf" in response.text
         assert "metadata: thin" in response.text
+        assert "Prepared for later draft generation" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_renders_draft_action_for_job_artefacts(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Draft action target", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="artefacts/baseline.md",
+            )
+            db.add_all([job, artefact])
+            db.flush()
+            db.add(
+                JobArtefactLink(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            artefact_uuid = artefact.uuid
+
+        login(client, "jobseeker@example.com")
+
+        response = client.get(f"/jobs/{job_uuid}")
+
+        assert response.status_code == 200
+        assert "Draft tailored resume" in response.text
+        assert "Draft cover letter" in response.text
+        assert "Draft supporting statement" in response.text
+        assert "Draft attestation" in response.text
+        assert f'action="/jobs/{job_uuid}/artefacts/{artefact_uuid}/drafts"' in response.text
     finally:
         app.dependency_overrides.clear()
 
@@ -716,6 +759,442 @@ def test_job_detail_tailoring_guidance_uses_local_fallback_when_selected_artefac
             assert output.provider == "system"
             assert output.source_context["local_fallback"] is True
             assert output.source_context["artefact_uuid"] == artefact_uuid
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_artefact_draft_creates_visible_output(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Draft success", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="artefacts/baseline.md",
+            )
+            db.add_all([job, artefact])
+            db.flush()
+            db.add(
+                JobArtefactLink(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                )
+            )
+            db.add(
+                AiOutput(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                    output_type="tailoring_guidance",
+                    title="AI tailoring guidance",
+                    body="### Keep\n* **Programme delivery evidence**",
+                )
+            )
+            db.add(
+                AiProviderSetting(
+                    owner_user_id=user.id,
+                    provider="gemini",
+                    label="AI Studio",
+                    model_name="gemini-flash-latest",
+                    api_key_encrypted="sealed",
+                    api_key_hint="key...1234",
+                    is_enabled=True,
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            artefact_uuid = artefact.uuid
+
+        def fake_generate_job_artefact_draft(
+            db, user, job, artefact, *, draft_kind, profile=None, tailoring_guidance=None, prior_suggestion=None
+        ):
+            assert artefact.uuid == artefact_uuid
+            assert draft_kind == "resume_draft"
+            assert tailoring_guidance is not None
+            output = AiOutput(
+                owner_user_id=user.id,
+                job_id=job.id,
+                artefact_id=artefact.id,
+                output_type="draft",
+                title="AI tailored resume draft",
+                body="### Headline\nTechnical Program Manager",
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                source_context={
+                    "surface": "job_workspace",
+                    "artefact_uuid": artefact.uuid,
+                    "prompt_contract": "artefact_draft_v1",
+                    "draft_kind": "resume_draft",
+                    "content_mode": "metadata_only",
+                },
+            )
+            db.add(output)
+            db.flush()
+            return output
+
+        monkeypatch.setattr(
+            "app.api.routes.job_detail.generate_job_artefact_draft",
+            fake_generate_job_artefact_draft,
+        )
+
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/jobs/{job_uuid}/artefacts/{artefact_uuid}/drafts",
+            data={"draft_kind": "resume_draft"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "ai_status=Draft%20generated" in response.headers["location"]
+
+        detail_response = client.get(response.headers["location"])
+        assert detail_response.status_code == 200
+        assert "Draft generated" in detail_response.text
+        assert "AI tailored resume draft" in detail_response.text
+        assert "Technical Program Manager" in detail_response.text
+        assert "content: metadata_only" in detail_response.text
+        assert "Low-confidence draft" in detail_response.text
+
+        with session_local() as db:
+            outputs = db.scalars(select(AiOutput).where(AiOutput.output_type == "draft")).all()
+            assert len(outputs) == 1
+            assert outputs[0].job.uuid == job_uuid
+            assert outputs[0].artefact.uuid == artefact_uuid
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_cover_letter_draft_creates_visible_output(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Cover letter draft", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="artefacts/baseline.md",
+            )
+            db.add_all([job, artefact])
+            db.flush()
+            db.add(
+                JobArtefactLink(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                )
+            )
+            db.add(
+                AiProviderSetting(
+                    owner_user_id=user.id,
+                    provider="gemini",
+                    label="AI Studio",
+                    model_name="gemini-flash-latest",
+                    api_key_encrypted="sealed",
+                    api_key_hint="key...1234",
+                    is_enabled=True,
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            artefact_uuid = artefact.uuid
+
+        def fake_generate_job_artefact_draft(
+            db, user, job, artefact, *, draft_kind, profile=None, tailoring_guidance=None, prior_suggestion=None
+        ):
+            assert artefact.uuid == artefact_uuid
+            assert draft_kind == "cover_letter_draft"
+            output = AiOutput(
+                owner_user_id=user.id,
+                job_id=job.id,
+                artefact_id=artefact.id,
+                output_type="draft",
+                title="AI cover letter draft",
+                body="### Opening\nDear Hiring Team,",
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                source_context={
+                    "surface": "job_workspace",
+                    "artefact_uuid": artefact.uuid,
+                    "prompt_contract": "artefact_draft_v1",
+                    "draft_kind": "cover_letter_draft",
+                    "content_mode": "metadata_only",
+                },
+            )
+            db.add(output)
+            db.flush()
+            return output
+
+        monkeypatch.setattr(
+            "app.api.routes.job_detail.generate_job_artefact_draft",
+            fake_generate_job_artefact_draft,
+        )
+
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/jobs/{job_uuid}/artefacts/{artefact_uuid}/drafts",
+            data={"draft_kind": "cover_letter_draft"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "ai_status=Draft%20generated" in response.headers["location"]
+
+        detail_response = client.get(response.headers["location"])
+        assert detail_response.status_code == 200
+        assert "AI cover letter draft" in detail_response.text
+        assert "Dear Hiring Team" in detail_response.text
+        assert "content: metadata_only" in detail_response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_supporting_statement_draft_creates_visible_output(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Supporting statement draft", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="artefacts/baseline.md",
+            )
+            db.add_all([job, artefact])
+            db.flush()
+            db.add(
+                JobArtefactLink(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                )
+            )
+            db.add(
+                AiProviderSetting(
+                    owner_user_id=user.id,
+                    provider="gemini",
+                    label="AI Studio",
+                    model_name="gemini-flash-latest",
+                    api_key_encrypted="sealed",
+                    api_key_hint="key...1234",
+                    is_enabled=True,
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            artefact_uuid = artefact.uuid
+
+        def fake_generate_job_artefact_draft(
+            db, user, job, artefact, *, draft_kind, profile=None, tailoring_guidance=None, prior_suggestion=None
+        ):
+            assert artefact.uuid == artefact_uuid
+            assert draft_kind == "supporting_statement_draft"
+            output = AiOutput(
+                owner_user_id=user.id,
+                job_id=job.id,
+                artefact_id=artefact.id,
+                output_type="draft",
+                title="AI supporting statement draft",
+                body="### Fit summary\nPlatform delivery and stakeholder leadership.",
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                source_context={
+                    "surface": "job_workspace",
+                    "artefact_uuid": artefact.uuid,
+                    "prompt_contract": "artefact_draft_v1",
+                    "draft_kind": "supporting_statement_draft",
+                    "content_mode": "metadata_only",
+                },
+            )
+            db.add(output)
+            db.flush()
+            return output
+
+        monkeypatch.setattr(
+            "app.api.routes.job_detail.generate_job_artefact_draft",
+            fake_generate_job_artefact_draft,
+        )
+
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/jobs/{job_uuid}/artefacts/{artefact_uuid}/drafts",
+            data={"draft_kind": "supporting_statement_draft"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "ai_status=Draft%20generated" in response.headers["location"]
+
+        detail_response = client.get(response.headers["location"])
+        assert detail_response.status_code == 200
+        assert "AI supporting statement draft" in detail_response.text
+        assert "Platform delivery and stakeholder leadership." in detail_response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_renders_save_draft_action_for_draft_outputs(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Save draft target", status="saved")
+            db.add(job)
+            db.flush()
+            db.add(
+                AiOutput(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    output_type="draft",
+                    title="AI tailored resume draft",
+                    body="### Headline\nTechnical Program Manager",
+                    provider="gemini",
+                    model_name="gemini-flash-latest",
+                    source_context={
+                        "draft_kind": "resume_draft",
+                        "content_mode": "metadata_only",
+                    },
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+
+        login(client, "jobseeker@example.com")
+
+        response = client.get(f"/jobs/{job_uuid}")
+
+        assert response.status_code == 200
+        assert "Save as artefact" in response.text
+        assert f'action="/jobs/{job_uuid}/ai-outputs/' in response.text
+        assert '/save-draft"' in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_save_draft_as_artefact_creates_markdown_artefact(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Principal TPM", status="saved")
+            baseline = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="artefacts/baseline.md",
+            )
+            db.add_all([job, baseline])
+            db.flush()
+            db.add(
+                AiOutput(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=baseline.id,
+                    output_type="draft",
+                    title="AI tailored resume draft",
+                    body="### Headline\nTechnical Program Manager",
+                    source_context={
+                        "draft_kind": "resume_draft",
+                        "artefact_uuid": baseline.uuid,
+                    },
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            baseline_uuid = baseline.uuid
+
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/jobs/{job_uuid}/ai-outputs/1/save-draft",
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "ai_status=Draft%20saved%20as%20artefact" in response.headers["location"]
+
+        detail_response = client.get(response.headers["location"])
+        assert detail_response.status_code == 200
+        assert "Draft saved as artefact" in detail_response.text
+
+        with session_local() as db:
+            artefacts = db.scalars(select(Artefact).order_by(Artefact.id)).all()
+            assert len(artefacts) == 2
+            saved = artefacts[1]
+            assert saved.kind == "resume"
+            assert saved.filename == "principal-tpm-resume-draft.md"
+            assert saved.content_type == "text/markdown"
+            assert saved.purpose == "AI tailored resume draft"
+            assert saved.version_label == "ai-draft-v1"
+            assert baseline_uuid in (saved.notes or "")
+            output = db.scalar(select(AiOutput).where(AiOutput.output_type == "draft"))
+            assert output is not None
+            assert output.source_context["saved_artefact_uuid"] == saved.uuid
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_save_cover_letter_draft_as_matching_artefact_kind(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Senior Product Manager", status="saved")
+            baseline = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="artefacts/baseline.md",
+            )
+            db.add_all([job, baseline])
+            db.flush()
+            db.add(
+                AiOutput(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=baseline.id,
+                    output_type="draft",
+                    title="AI cover letter draft",
+                    body="### Opening\nDear Hiring Team,",
+                    source_context={
+                        "draft_kind": "cover_letter_draft",
+                        "artefact_uuid": baseline.uuid,
+                    },
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+
+        login(client, "jobseeker@example.com")
+
+        response = client.post(
+            f"/jobs/{job_uuid}/ai-outputs/1/save-draft",
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+
+        with session_local() as db:
+            artefacts = db.scalars(select(Artefact).order_by(Artefact.id)).all()
+            assert len(artefacts) == 2
+            saved = artefacts[1]
+            assert saved.kind == "cover_letter"
+            assert saved.filename == "senior-product-manager-cover-letter-draft.md"
     finally:
         app.dependency_overrides.clear()
 

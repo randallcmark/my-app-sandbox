@@ -1,5 +1,6 @@
 from datetime import datetime
 from html import escape
+import re
 from typing import Annotated
 from urllib.parse import quote
 
@@ -18,6 +19,9 @@ from app.services.artefacts import (
 from app.storage.provider import get_storage_provider
 
 router = APIRouter(tags=["artefacts"])
+
+_DRAFT_OUTPUT_ID_RE = re.compile(r"Saved from AI draft output #(\d+)\.")
+_BASELINE_UUID_RE = re.compile(r"Baseline artefact UUID: ([0-9a-f-]+)\.")
 
 
 def _value(value: object) -> str:
@@ -38,7 +42,36 @@ def _size(value: int | None) -> str:
     return f"{value / (1024 * 1024):.1f} MB"
 
 
-def _artefact_card(artefact: Artefact) -> str:
+def _artefact_provenance(artefact: Artefact, artefact_lookup: dict[str, Artefact]) -> str:
+    notes = artefact.notes or ""
+    if "Saved from AI draft output #" not in notes:
+        return ""
+    output_match = _DRAFT_OUTPUT_ID_RE.search(notes)
+    baseline_match = _BASELINE_UUID_RE.search(notes)
+    items: list[str] = []
+    if output_match:
+        items.append(f"<li>Saved from AI draft output #{escape(output_match.group(1))}</li>")
+    if baseline_match:
+        baseline_uuid = baseline_match.group(1)
+        baseline = artefact_lookup.get(baseline_uuid)
+        if baseline is not None:
+            items.append(
+                f'<li>Baseline artefact: <a href="/artefacts/{escape(baseline.uuid, quote=True)}/download">'
+                f"{escape(baseline.filename)}</a></li>"
+            )
+        else:
+            items.append(f"<li>Baseline artefact UUID: {escape(baseline_uuid)}</li>")
+    if not items:
+        return ""
+    return (
+        '<div class="provenance-block">'
+        '<p class="eyebrow">Provenance</p>'
+        '<ul class="provenance-list">' + "".join(items) + "</ul>"
+        "</div>"
+    )
+
+
+def _artefact_card(artefact: Artefact, artefact_lookup: dict[str, Artefact]) -> str:
     linked_jobs = {link.job.id: link.job for link in artefact.job_links}
     if artefact.job:
         linked_jobs[artefact.job.id] = artefact.job
@@ -52,6 +85,7 @@ def _artefact_card(artefact: Artefact) -> str:
     purpose = artefact.purpose or "Purpose not set"
     version = artefact.version_label or "Version not set"
     notes = f"<p>{escape(artefact.notes)}</p>" if artefact.notes else ""
+    provenance = _artefact_provenance(artefact, artefact_lookup)
     return f"""
     <article class="artefact-card">
       <div>
@@ -70,6 +104,7 @@ def _artefact_card(artefact: Artefact) -> str:
         </div>
       </dl>
       {notes}
+      {provenance}
       <div>
         <p class="eyebrow">Linked jobs</p>
         <ol class="linked-jobs">{job_links}</ol>
@@ -108,7 +143,8 @@ def _artefact_card(artefact: Artefact) -> str:
 
 
 def render_artefact_library(user: User, artefacts: list[Artefact]) -> HTMLResponse:
-    cards = "\n".join(_artefact_card(artefact) for artefact in artefacts)
+    artefact_lookup = {artefact.uuid: artefact for artefact in artefacts}
+    cards = "\n".join(_artefact_card(artefact, artefact_lookup) for artefact in artefacts)
     if not cards:
         cards = """
         <section class="empty-state">
@@ -168,6 +204,19 @@ def render_artefact_library(user: User, artefacts: list[Artefact]) -> HTMLRespon
     }
     .linked-jobs li { display: grid; gap: 2px; }
     .linked-jobs span { color: var(--muted); }
+    .provenance-block {
+      border-top: 0.5px solid var(--line);
+      display: grid;
+      gap: 8px;
+      padding-top: 12px;
+    }
+    .provenance-list {
+      display: grid;
+      gap: 6px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
     .actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .button, button {
       border: 0.5px solid var(--line);

@@ -1,7 +1,13 @@
 from dataclasses import dataclass
 from hashlib import sha256
+import io
+from pathlib import Path
+import shutil
+import subprocess
 from typing import Iterable
 from uuid import uuid4
+import zipfile
+from xml.etree import ElementTree
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
@@ -13,7 +19,8 @@ from app.db.models.job import Job
 from app.db.models.job_artefact_link import JobArtefactLink
 from app.db.models.user import User
 from app.storage.base import StorageProvider
-from app.storage.paths import sanitize_filename
+from app.storage.local import LocalStorageProvider
+from app.storage.paths import resolve_storage_path, sanitize_filename
 from app.storage.provider import get_storage_provider
 
 
@@ -27,6 +34,27 @@ ARTEFACT_KIND_PRIORITY = {
     "portfolio": 24,
     "case_study": 24,
     "other": 10,
+}
+
+TEXTLIKE_CONTENT_TYPES = {
+    "text/plain",
+    "text/markdown",
+    "text/x-markdown",
+    "application/markdown",
+    "application/json",
+}
+
+TEXTLIKE_SUFFIXES = (".txt", ".md", ".markdown", ".json")
+DOCXLIKE_SUFFIXES = (".docx",)
+TEXTUTIL_SUFFIXES = (".doc", ".rtf", ".odt")
+PDF_SUFFIXES = (".pdf",)
+PROVIDER_DOCUMENT_CONTENT_TYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "application/rtf",
+    "text/rtf",
+    "application/vnd.oasis.opendocument.text",
 }
 
 
@@ -288,6 +316,143 @@ def linked_artefacts_for_job(job: Job) -> list[Artefact]:
     for link in job.artefact_links:
         artefacts[link.artefact.id] = link.artefact
     return sorted(artefacts.values(), key=lambda item: item.updated_at, reverse=True)
+
+
+def _clip_text(text: str, *, max_chars: int) -> str | None:
+    cleaned = text.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return cleaned[: max_chars - 16].rstrip() + "\n\n[truncated]"
+
+
+def _extract_docx_text(raw: bytes) -> str | None:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(raw))
+    except zipfile.BadZipFile:
+        return None
+    with archive:
+        try:
+            document_xml = archive.read("word/document.xml")
+        except KeyError:
+            return None
+    try:
+        root = ElementTree.fromstring(document_xml)
+    except ElementTree.ParseError:
+        return None
+    text_parts = [node.text for node in root.iter() if node.tag.endswith("}t") and node.text]
+    return "\n".join(part.strip() for part in text_parts if part and part.strip()) or None
+
+
+def _local_storage_path(artefact: Artefact, provider: StorageProvider) -> Path | None:
+    if not isinstance(provider, LocalStorageProvider):
+        return None
+    try:
+        return resolve_storage_path(provider.root, artefact.storage_key)
+    except Exception:
+        return None
+
+
+def _extract_with_textutil(path: Path) -> str | None:
+    if shutil.which("textutil") is None:
+        return None
+    result = subprocess.run(
+        ["textutil", "-convert", "txt", "-stdout", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _extract_pdf_text(path: Path) -> str | None:
+    if shutil.which("mdls") is None:
+        return None
+    result = subprocess.run(
+        ["mdls", "-name", "kMDItemTextContent", "-raw", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    text = result.stdout.strip()
+    if not text or text == "(null)":
+        return None
+    return text
+
+
+def load_artefact_text_excerpt(
+    artefact: Artefact,
+    *,
+    storage: StorageProvider | None = None,
+    max_chars: int = 4000,
+) -> str | None:
+    content_type = (artefact.content_type or "").strip().lower()
+    filename = (artefact.filename or "").strip().lower()
+    is_textlike = content_type in TEXTLIKE_CONTENT_TYPES or filename.endswith(TEXTLIKE_SUFFIXES)
+    provider = storage or get_storage_provider()
+    if is_textlike:
+        try:
+            raw = provider.load(artefact.storage_key)
+        except FileNotFoundError:
+            return None
+        return _clip_text(raw.decode("utf-8", errors="ignore"), max_chars=max_chars)
+
+    if filename.endswith(DOCXLIKE_SUFFIXES):
+        try:
+            raw = provider.load(artefact.storage_key)
+        except FileNotFoundError:
+            return None
+        return _clip_text(_extract_docx_text(raw) or "", max_chars=max_chars)
+
+    local_path = _local_storage_path(artefact, provider)
+    if local_path is None:
+        return None
+
+    if filename.endswith(TEXTUTIL_SUFFIXES):
+        return _clip_text(_extract_with_textutil(local_path) or "", max_chars=max_chars)
+
+    if filename.endswith(PDF_SUFFIXES):
+        return _clip_text(_extract_pdf_text(local_path) or "", max_chars=max_chars)
+
+    return None
+
+
+def load_artefact_document_payload(
+    artefact: Artefact,
+    *,
+    storage: StorageProvider | None = None,
+    max_bytes: int = 10 * 1024 * 1024,
+) -> tuple[str, bytes] | None:
+    content_type = (artefact.content_type or "").strip().lower()
+    filename = (artefact.filename or "").strip().lower()
+    inferred_type = content_type
+    if not inferred_type:
+        if filename.endswith(PDF_SUFFIXES):
+            inferred_type = "application/pdf"
+        elif filename.endswith(DOCXLIKE_SUFFIXES):
+            inferred_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif filename.endswith(".doc"):
+            inferred_type = "application/msword"
+        elif filename.endswith(".rtf"):
+            inferred_type = "application/rtf"
+        elif filename.endswith(".odt"):
+            inferred_type = "application/vnd.oasis.opendocument.text"
+    if inferred_type not in PROVIDER_DOCUMENT_CONTENT_TYPES:
+        return None
+
+    provider = storage or get_storage_provider()
+    try:
+        raw = provider.load(artefact.storage_key)
+    except FileNotFoundError:
+        return None
+    if not raw or len(raw) > max_bytes:
+        return None
+    return inferred_type, raw
 
 
 def update_artefact_metadata(

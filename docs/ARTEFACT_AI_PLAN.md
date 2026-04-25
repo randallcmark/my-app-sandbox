@@ -132,8 +132,11 @@ Current status:
 - sub-slice 4 implemented: thin metadata artefacts now use a visible local fallback
   `tailoring_guidance` record instead of forcing a low-confidence provider call, while stronger
   artefacts continue through the provider-backed path;
-- recommended next step: complete the remaining extraction-aware and draft-handoff preparation work
-  before moving into full Phase D draft generation.
+- sub-slice 5 implemented: text-like artefacts can now contribute a verified extracted excerpt to
+  tailoring prompts, and tailoring outputs now carry draft-handoff metadata so later draft
+  generation can reuse the selected artefact and guidance contract cleanly;
+- recommended next step: move into Phase D draft generation planning and implementation, starting
+  with visible draft output rather than direct artefact mutation.
 
 Implementation targets:
 
@@ -149,6 +152,37 @@ Expected result:
 
 Goal: produce usable draft artefacts or required supporting documents.
 
+Current status:
+
+- sub-slice 1 implemented: Phase D now has a provider-backed `draft` generation path in Job
+  Workspace for one selected artefact, beginning with `resume_draft`;
+- sub-slice 2 implemented: Job Workspace now also exposes `cover_letter_draft` from the same
+  selected artefact baseline and shared draft route;
+- sub-slice 3 implemented: metadata-only drafts are now labelled explicitly as low-confidence in
+  the shared output surface so the user can distinguish scaffolds from text-grounded drafts;
+- sub-slice 4 implemented: visible draft outputs can now be promoted explicitly into new markdown
+  artefacts linked to the same job, with provenance back to the originating draft and baseline
+  artefact, while leaving the baseline untouched;
+- sub-slice 5 implemented: Phase D now also supports `supporting_statement_draft` and
+  `attestation_draft`, and saved artefact kind/filename mapping now follows the selected draft
+  type rather than defaulting to resume-shaped output;
+- sub-slice 6 implemented: the artefact library now surfaces saved-draft provenance, including the
+  originating AI draft output id and baseline artefact link when available, so promoted drafts stay
+  auditable after they leave the job page;
+- sub-slice 7 implemented: document extraction support now extends beyond plain text to include
+  cross-platform DOCX parsing and best-effort host-backed adapters for legacy Word/RTF and PDF
+  files when the runtime can provide text, raising the ceiling on non-text draft quality without
+  requiring provider-native document upload yet;
+- sub-slice 8 implemented: a narrow `provider_document` path now exists for Gemini-backed drafts
+  when no extracted text is available but a supported binary artefact payload can be supplied,
+  allowing PDFs and similar documents to be passed directly as model input instead of falling back
+  immediately to metadata-only mode;
+- draft generation now uses an explicit document context strategy with `content_mode`:
+  `extracted_text` when a verified text excerpt is available, `provider_document` when Gemini can
+  accept a supported binary artefact directly, otherwise `metadata_only`;
+- draft outputs remain visible `AiOutput` records by default, and artefact creation now happens
+  only through an explicit user-controlled promotion action; no overwrite path exists.
+
 Target outputs:
 
 - resume variant;
@@ -163,10 +197,27 @@ Implementation targets:
 - generate visible `draft` outputs first;
 - let the user review before saving or exporting;
 - support "create from baseline artefact + tailoring guidance" flows.
+- prefer canonical extracted text over metadata-only drafting;
+- keep provider-native document input as a later adapter, not the first implementation path.
 
 Expected result:
 
 - draft generation exists, but persistent artefact creation remains user-controlled.
+
+Document context strategy:
+
+1. `extracted_text`
+   - use verified text excerpts from text-like artefacts such as markdown or plain text;
+   - this is the preferred path for higher-confidence drafting.
+2. `provider_document`
+   - now implemented narrowly for Gemini-backed draft generation when no extracted text is
+     available and the artefact is a supported document type;
+   - current supported payloads are provider-document handoff for PDFs and compatible document
+     formats where raw bytes are available;
+   - other providers still fall back to extraction or metadata-only mode.
+3. `metadata_only`
+   - use artefact metadata, tailoring guidance, and job context when no text extraction exists;
+   - drafts from this mode must remain more cautious and scaffold-like.
 
 ### Phase E: Outcome-Aware Learning
 
@@ -859,7 +910,7 @@ Recommended sub-slices inside Phase C:
 3. Tailoring prompt/service path using selected artefact + job + profile context. Implemented.
 4. Job Workspace action and visible rendering. Implemented.
 5. Sparse/extraction fallback behavior. Implemented for thin metadata without extracted text.
-6. Optional handoff path to future draft generation.
+6. Optional handoff path to future draft generation. Implemented as source-context preparation.
 
 ### Risks and Controls
 

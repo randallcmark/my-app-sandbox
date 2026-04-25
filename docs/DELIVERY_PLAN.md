@@ -200,8 +200,21 @@ implemented: Job Workspace now exposes a per-artefact tailoring action with owne
 retrieval and route wiring. Phase C sub-slices 3 and 4 are now also implemented: tailoring
 guidance renders through the shared visible AI output surface with a selected artefact link, and
 thin metadata artefacts now degrade to a visible local fallback instead of forcing a weak provider
-call. The next remaining Phase C slice is extraction-aware refinement and handoff preparation for
-later draft generation.
+call. Phase C sub-slice 5 is now also implemented: text-like artefacts can contribute a verified
+excerpt to tailoring prompts, and tailoring outputs now carry draft-handoff metadata for later
+generation. Phase D has now started: the first visible draft slice is implemented for one selected
+artefact in Job Workspace, beginning with `resume_draft` and an explicit document context strategy
+that prefers extracted text and falls back to metadata-only drafting when necessary. Cover-letter
+drafting is now also exposed from the same route, metadata-only drafts are labelled as
+low-confidence scaffolds in the shared output surface, and visible drafts can now be promoted
+explicitly into new markdown artefacts without overwriting the baseline. Supporting statement and
+attestation draft kinds now also share the same route and promotion flow, with saved artefact kind
+and filename matching the selected draft type. The artefact library now surfaces saved-draft
+provenance so promoted drafts retain a visible link back to their source draft and baseline. The
+document context layer now also supports DOCX extraction plus best-effort host-backed extraction
+for legacy Word/RTF and PDF files when available. A narrow Gemini-backed `provider_document` path
+now also exists for draft generation when no extracted text is available but a supported binary
+artefact can be passed directly, reducing unnecessary metadata-only fallbacks on non-text files.
 
 Implementation targets:
 

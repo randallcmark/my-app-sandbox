@@ -99,6 +99,53 @@ def test_artefact_library_lists_owned_job_artefacts(tmp_path: Path, monkeypatch)
         app.dependency_overrides.clear()
 
 
+def test_artefact_library_shows_saved_draft_provenance(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Draft source role", company="Library Co")
+            db.add(job)
+            db.flush()
+            baseline = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="resume",
+                filename="baseline.md",
+                storage_key="jobs/library/artefacts/baseline.md",
+                size_bytes=12,
+            )
+            db.add(baseline)
+            db.flush()
+            saved = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="cover_letter",
+                purpose="AI cover letter draft",
+                version_label="ai-draft-v1",
+                notes=f"Saved from AI draft output #7. Baseline artefact UUID: {baseline.uuid}.",
+                outcome_context="Generated from visible AI draft output.",
+                filename="cover-letter-draft.md",
+                storage_key="jobs/library/artefacts/cover-letter-draft.md",
+                size_bytes=20,
+            )
+            db.add(saved)
+            db.commit()
+
+        login(client, "jobseeker@example.com")
+
+        response = client.get("/artefacts")
+
+        assert response.status_code == 200
+        assert "Provenance" in response.text
+        assert "Saved from AI draft output #7" in response.text
+        assert "Baseline artefact" in response.text
+        assert "baseline.md" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_artefact_library_updates_metadata(tmp_path: Path, monkeypatch) -> None:
     client, session_local = build_client(tmp_path, monkeypatch)
     try:

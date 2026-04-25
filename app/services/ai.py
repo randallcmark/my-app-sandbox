@@ -1,5 +1,6 @@
 import json
 import ssl
+import base64
 from urllib import error, request
 
 import certifi
@@ -16,6 +17,8 @@ from app.db.models.artefact import Artefact
 from app.services.artefacts import (
     ArtefactCandidateSummary,
     list_candidate_artefacts_for_job,
+    load_artefact_document_payload,
+    load_artefact_text_excerpt,
     summarise_artefact_for_ai,
 )
 
@@ -174,6 +177,11 @@ def _url_error_message(setting: AiProviderSetting, exc: error.URLError) -> str:
     return f"Could not reach {provider}. Check the network connection and Base URL in Settings."
 
 
+def _timeout_error_message(setting: AiProviderSetting) -> str:
+    provider = _provider_label(setting)
+    return f"{provider} timed out before returning a response. Try again or reduce the request size."
+
+
 def get_enabled_ai_provider(db: Session, user: User) -> AiProviderSetting | None:
     settings = list_user_ai_provider_settings(db, user)
     enabled = [setting for setting in settings if setting.is_enabled]
@@ -303,21 +311,106 @@ def _build_artefact_tailoring_prompt(
     job: Job,
     artefact: Artefact,
     artefact_summary: ArtefactCandidateSummary,
+    extracted_text: str | None = None,
     prior_suggestion: AiOutput | None = None,
 ) -> tuple[str, str]:
     title = "AI tailoring guidance"
     prior_context = ""
     if prior_suggestion is not None and prior_suggestion.body:
         prior_context = f"\n\nPrior artefact suggestion:\n{prior_suggestion.body}"
+    extracted_text_block = ""
+    if extracted_text:
+        extracted_text_block = f"\n\nExtracted artefact text (verified excerpt):\n{extracted_text}"
     prompt = (
         "You are providing tailoring guidance for one selected artefact against one job. "
         "Use markdown sections titled 'Keep', 'Strengthen', 'De-emphasise or remove', "
         "'Missing evidence', 'Supporting documents', and 'How to use this artefact for this submission'. "
         "Do not invent document content. If extracted artefact text is unavailable, say that you are "
-        "reasoning from metadata and prior usage history only. Be concrete and job-specific.\n\n"
+        "reasoning from metadata and prior usage history only. If extracted text is present, treat it as "
+        "verified present content and keep any other claims clearly separate. Be concrete and job-specific.\n\n"
         f"User profile:\n{_profile_context(profile)}\n\n"
         f"Job:\n{_job_context(job)}\n\n"
-        f"Selected artefact:\n{artefact_summary.summary_text}{prior_context}"
+        f"Selected artefact:\n{artefact_summary.summary_text}{extracted_text_block}{prior_context}"
+    )
+    return title, prompt
+
+
+def _draft_request(draft_kind: str) -> tuple[str, str]:
+    if draft_kind == "resume_draft":
+        return (
+            "AI tailored resume draft",
+            (
+                "Draft a tailored resume variant for this job. Use markdown sections titled "
+                "'Headline', 'Professional summary', 'Relevant impact bullets', 'Skills to emphasise', "
+                "and 'Gaps or evidence still needed'. If the baseline artefact content is unavailable, "
+                "produce a cautious scaffold rather than pretending to rewrite exact document content. "
+                "Do not invent experience."
+            ),
+        )
+    if draft_kind == "cover_letter_draft":
+        return (
+            "AI cover letter draft",
+            (
+                "Draft a concise cover letter for this job. Use markdown sections titled "
+                "'Opening', 'Role fit', 'Relevant evidence', 'Why this company or role', and 'Closing'. "
+                "If the baseline artefact content is unavailable, produce a cautious scaffold based on "
+                "metadata, tailoring guidance, and job context rather than inventing specifics."
+            ),
+        )
+    if draft_kind == "supporting_statement_draft":
+        return (
+            "AI supporting statement draft",
+            (
+                "Draft a targeted supporting statement for this job. Use markdown sections titled "
+                "'Fit summary', 'Relevant evidence', 'Operational examples', 'Why this role', and "
+                "'Points still to evidence'. If the baseline artefact content is unavailable, produce "
+                "a cautious scaffold based on metadata, tailoring guidance, and job context rather than "
+                "inventing specifics."
+            ),
+        )
+    if draft_kind == "attestation_draft":
+        return (
+            "AI attestation draft",
+            (
+                "Draft a concise attestation or supporting declaration for this job. Use markdown sections "
+                "titled 'Context', 'Statement', 'Relevant evidence', and 'Closing'. If the baseline artefact "
+                "content is unavailable, produce a cautious scaffold based on metadata, tailoring guidance, "
+                "and job context rather than inventing specifics."
+            ),
+        )
+    raise AiExecutionError("Unsupported draft kind")
+
+
+def _build_artefact_draft_prompt(
+    *,
+    profile: UserProfile | None,
+    job: Job,
+    artefact_summary: ArtefactCandidateSummary,
+    draft_kind: str,
+    content_mode: str,
+    extracted_text: str | None = None,
+    tailoring_guidance: AiOutput | None = None,
+    prior_suggestion: AiOutput | None = None,
+) -> tuple[str, str]:
+    title, instruction = _draft_request(draft_kind)
+    content_block = "Baseline artefact content is unavailable. Reason from metadata only."
+    if content_mode == "extracted_text" and extracted_text:
+        content_block = f"Verified extracted artefact text:\n{extracted_text}"
+    tailoring_block = ""
+    if tailoring_guidance is not None and tailoring_guidance.body:
+        tailoring_block = f"\n\nTailoring guidance:\n{tailoring_guidance.body}"
+    prior_block = ""
+    if prior_suggestion is not None and prior_suggestion.body:
+        prior_block = f"\n\nPrior artefact suggestion:\n{prior_suggestion.body}"
+    prompt = (
+        f"{instruction}\n\n"
+        f"User profile:\n{_profile_context(profile)}\n\n"
+        f"Job:\n{_job_context(job)}\n\n"
+        f"Selected baseline artefact:\n{artefact_summary.summary_text}\n\n"
+        f"Content mode: {content_mode}\n"
+        f"{content_block}"
+        f"{tailoring_block}"
+        f"{prior_block}"
     )
     return title, prompt
 
@@ -426,6 +519,8 @@ def _call_openai_compatible(setting: AiProviderSetting, prompt: str) -> str:
         raise AiExecutionError(_http_error_message(setting, exc)) from exc
     except error.URLError as exc:
         raise AiExecutionError(_url_error_message(setting, exc)) from exc
+    except TimeoutError as exc:
+        raise AiExecutionError(_timeout_error_message(setting)) from exc
 
     choices = raw.get("choices")
     if not isinstance(choices, list) or not choices:
@@ -474,6 +569,8 @@ def _call_openai(setting: AiProviderSetting, prompt: str) -> str:
         raise AiExecutionError(_http_error_message(setting, exc)) from exc
     except error.URLError as exc:
         raise AiExecutionError(_url_error_message(setting, exc)) from exc
+    except TimeoutError as exc:
+        raise AiExecutionError(_timeout_error_message(setting)) from exc
 
     output_text = raw.get("output_text")
     if isinstance(output_text, str) and output_text.strip():
@@ -492,22 +589,40 @@ def _call_openai(setting: AiProviderSetting, prompt: str) -> str:
     raise AiExecutionError("AI provider returned an empty response")
 
 
-def _call_gemini(setting: AiProviderSetting, prompt: str) -> str:
+def _call_gemini(
+    setting: AiProviderSetting,
+    prompt: str,
+    *,
+    document: dict[str, object] | None = None,
+) -> str:
     if not setting.model_name:
         raise AiExecutionError("Enabled AI provider is missing a model name")
     api_key = _open_provider_api_key(setting)
     endpoint_root = (setting.base_url or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+    parts: list[dict[str, object]] = [
+        {
+            "text": (
+                "You are an assistant helping a jobseeker inside a private application tracker.\n\n"
+                + prompt
+            )
+        }
+    ]
+    if document is not None:
+        mime_type = document.get("mime_type")
+        data = document.get("data")
+        if isinstance(mime_type, str) and isinstance(data, (bytes, bytearray)):
+            parts.append(
+                {
+                    "inline_data": {
+                        "mime_type": mime_type,
+                        "data": base64.b64encode(bytes(data)).decode("ascii"),
+                    }
+                }
+            )
     payload = {
         "contents": [
             {
-                "parts": [
-                    {
-                        "text": (
-                            "You are an assistant helping a jobseeker inside a private application tracker.\n\n"
-                            + prompt
-                        )
-                    }
-                ]
+                "parts": parts
             }
         ],
         "generationConfig": {
@@ -532,6 +647,8 @@ def _call_gemini(setting: AiProviderSetting, prompt: str) -> str:
         raise AiExecutionError(_http_error_message(setting, exc)) from exc
     except error.URLError as exc:
         raise AiExecutionError(_url_error_message(setting, exc)) from exc
+    except TimeoutError as exc:
+        raise AiExecutionError(_timeout_error_message(setting)) from exc
 
     candidates = raw.get("candidates")
     if not isinstance(candidates, list) or not candidates:
@@ -550,11 +667,16 @@ def _call_gemini(setting: AiProviderSetting, prompt: str) -> str:
     raise AiExecutionError("AI provider returned an empty response")
 
 
-def _execute_prompt(setting: AiProviderSetting, prompt: str) -> str:
+def _execute_prompt(
+    setting: AiProviderSetting,
+    prompt: str,
+    *,
+    document: dict[str, object] | None = None,
+) -> str:
     if setting.provider == "openai_compatible":
         return _call_openai_compatible(setting, prompt)
     if setting.provider == "gemini":
-        return _call_gemini(setting, prompt)
+        return _call_gemini(setting, prompt, document=document)
     if setting.provider == "openai":
         return _call_openai(setting, prompt)
     raise AiExecutionError(
@@ -681,7 +803,9 @@ def generate_job_artefact_tailoring_guidance(
     prior_suggestion: AiOutput | None = None,
 ) -> AiOutput:
     artefact_summary = summarise_artefact_for_ai(artefact, current_job=job)
-    if artefact_summary.metadata_quality == "thin":
+    extracted_text = load_artefact_text_excerpt(artefact)
+    used_extracted_text = bool(extracted_text)
+    if artefact_summary.metadata_quality == "thin" and not used_extracted_text:
         output = AiOutput(
             owner_user_id=user.id,
             job_id=job.id,
@@ -705,6 +829,7 @@ def generate_job_artefact_tailoring_guidance(
                 "used_extracted_text": False,
                 "metadata_quality": artefact_summary.metadata_quality,
                 "local_fallback": True,
+                "draft_handoff_contract": "artefact_draft_seed_v1",
                 **(
                     {"artefact_suggestion_output_id": prior_suggestion.id}
                     if prior_suggestion is not None
@@ -725,6 +850,7 @@ def generate_job_artefact_tailoring_guidance(
         job=job,
         artefact=artefact,
         artefact_summary=artefact_summary,
+        extracted_text=extracted_text,
         prior_suggestion=prior_suggestion,
     )
     body = _execute_prompt(setting, prompt)
@@ -744,7 +870,74 @@ def generate_job_artefact_tailoring_guidance(
             "artefact_uuid": artefact.uuid,
             "prompt_contract": "artefact_tailoring_v1",
             "artefact_suggestion_output_id": prior_suggestion.id if prior_suggestion is not None else None,
-            "used_extracted_text": False,
+            "used_extracted_text": used_extracted_text,
+            "metadata_quality": artefact_summary.metadata_quality,
+            "draft_handoff_contract": "artefact_draft_seed_v1",
+        },
+    )
+    db.add(output)
+    db.flush()
+    return output
+
+
+def generate_job_artefact_draft(
+    db: Session,
+    user: User,
+    job: Job,
+    artefact: Artefact,
+    *,
+    draft_kind: str,
+    profile: UserProfile | None = None,
+    tailoring_guidance: AiOutput | None = None,
+    prior_suggestion: AiOutput | None = None,
+) -> AiOutput:
+    setting = get_enabled_ai_provider(db, user)
+    if setting is None:
+        raise AiExecutionError("Enable an AI provider in Settings before generating AI output")
+
+    artefact_summary = summarise_artefact_for_ai(artefact, current_job=job)
+    extracted_text = load_artefact_text_excerpt(artefact)
+    document_payload = None
+    content_mode = "extracted_text" if extracted_text else "metadata_only"
+    if extracted_text is None and setting.provider == "gemini":
+        provider_document = load_artefact_document_payload(artefact)
+        if provider_document is not None:
+            mime_type, raw = provider_document
+            document_payload = {"mime_type": mime_type, "data": raw}
+            content_mode = "provider_document"
+    title, prompt = _build_artefact_draft_prompt(
+        profile=profile,
+        job=job,
+        artefact_summary=artefact_summary,
+        draft_kind=draft_kind,
+        content_mode=content_mode,
+        extracted_text=extracted_text,
+        tailoring_guidance=tailoring_guidance,
+        prior_suggestion=prior_suggestion,
+    )
+    body = _execute_prompt(setting, prompt, document=document_payload)
+    output = AiOutput(
+        owner_user_id=user.id,
+        job_id=job.id,
+        artefact_id=artefact.id,
+        output_type="draft",
+        title=title,
+        body=body,
+        provider=setting.provider,
+        model_name=setting.model_name,
+        status="active",
+        source_context={
+            "surface": "job_workspace",
+            "job_uuid": job.uuid,
+            "artefact_uuid": artefact.uuid,
+            "prompt_contract": "artefact_draft_v1",
+            "draft_kind": draft_kind,
+            "content_mode": content_mode,
+            "used_extracted_text": bool(extracted_text),
+            "provider_document_mime_type": document_payload["mime_type"] if document_payload is not None else None,
+            "metadata_quality": artefact_summary.metadata_quality,
+            "tailoring_guidance_output_id": tailoring_guidance.id if tailoring_guidance is not None else None,
+            "artefact_suggestion_output_id": prior_suggestion.id if prior_suggestion is not None else None,
         },
     )
     db.add(output)

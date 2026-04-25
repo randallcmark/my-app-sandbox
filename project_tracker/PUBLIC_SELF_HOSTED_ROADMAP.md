@@ -129,6 +129,29 @@ As of 2026-04-19, the app is verified through:
   visible AI panel with a direct link back to the selected artefact.
 - Artefact AI Phase C sub-slice 4 implemented: thin metadata artefacts now produce a visible local
   fallback tailoring record instead of forcing a low-confidence provider call.
+- Artefact AI Phase C sub-slice 5 implemented: text-like artefacts now contribute verified
+  extracted excerpts to tailoring prompts when available, and tailoring outputs now carry
+  draft-handoff metadata for later generation flows.
+- Artefact AI Phase D sub-slice 1 implemented: Job Workspace now supports a first visible
+  provider-backed `draft` generation path for a selected artefact, starting with `resume_draft`
+  and explicit `content_mode` tracking (`extracted_text` vs `metadata_only`).
+- Artefact AI Phase D sub-slices 2 and 3 implemented: `cover_letter_draft` now shares the same
+  selected-artefact draft path, and metadata-only drafts are explicitly labelled as low-confidence
+  in the shared AI output surface.
+- Artefact AI Phase D sub-slice 4 implemented: visible draft outputs can now be saved explicitly
+  as new markdown artefacts linked to the same job, preserving provenance back to the source draft
+  and baseline artefact without overwrite.
+- Artefact AI Phase D sub-slice 5 implemented: supporting statement and attestation drafts now
+  share the same selected-artefact generation path, and saved artefact kind/filename mapping now
+  follows the chosen draft type.
+- Artefact AI Phase D sub-slice 7 implemented: draft extraction support now includes DOCX and
+  best-effort host-backed adapters for legacy Word/RTF and PDF files when available, improving
+  non-text baseline coverage before any provider-document upload path.
+- Artefact AI Phase D sub-slice 8 implemented: Gemini-backed draft generation now supports a
+  narrow `provider_document` mode for supported binary artefacts when no extracted text is
+  available, reducing metadata-only fallbacks for non-text baselines.
+- Artefact AI Phase D sub-slice 6 implemented: the artefact library now shows provenance for saved
+  drafts, including source draft id and baseline artefact linkage when available.
 
 Known next product focus:
 

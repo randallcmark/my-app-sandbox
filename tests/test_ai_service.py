@@ -11,14 +11,20 @@ from app.db.models.artefact import Artefact
 from app.db.models.user import User
 from app.main import app
 from app.services.ai import (
+    _call_gemini,
+    _build_artefact_draft_prompt,
     _build_artefact_tailoring_prompt,
     _build_artefact_suggestion_prompt,
     _build_job_prompt,
     _http_error_message,
+    _timeout_error_message,
     _url_error_message,
+    AiExecutionError,
+    generate_job_artefact_draft,
     generate_job_artefact_tailoring_guidance,
     generate_job_artefact_suggestion,
 )
+from app.services.artefacts import load_artefact_text_excerpt
 from tests.test_local_auth_routes import build_client
 
 
@@ -100,6 +106,15 @@ def test_url_error_message_maps_generic_connectivity_failures() -> None:
 
     assert "Could not reach OpenAI-compatible provider" in message
     assert "Base URL in Settings" in message
+
+
+def test_timeout_error_message_maps_provider_timeouts() -> None:
+    setting = _setting("gemini")
+
+    message = _timeout_error_message(setting)
+
+    assert "Google Gemini timed out before returning a response" in message
+    assert "reduce the request size" in message
 
 
 def test_build_job_prompt_uses_focus_specific_recommendation_instruction() -> None:
@@ -301,6 +316,70 @@ def test_build_artefact_tailoring_prompt_uses_selected_artefact_context() -> Non
     assert "Target roles: Technical Program Manager" in prompt
 
 
+def test_build_artefact_draft_prompt_includes_content_mode_and_tailoring_guidance() -> None:
+    profile = UserProfile(target_roles="Technical Program Manager")
+    job = Job(title="Staff TPM", status="saved", description_raw="Lead delivery.")
+    candidate = type("Candidate", (), {
+        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
+    })()
+    tailoring = AiOutput(body="### Keep\n* **Programme delivery**")
+
+    title, prompt = _build_artefact_draft_prompt(
+        profile=profile,
+        job=job,
+        artefact_summary=candidate,
+        draft_kind="resume_draft",
+        content_mode="extracted_text",
+        extracted_text="# Resume\n\nPlatform delivery",
+        tailoring_guidance=tailoring,
+    )
+
+    assert title == "AI tailored resume draft"
+    assert "Content mode: extracted_text" in prompt
+    assert "Verified extracted artefact text:" in prompt
+    assert "Tailoring guidance:" in prompt
+    assert "Platform delivery" in prompt
+
+
+def test_build_cover_letter_draft_prompt_uses_cover_letter_contract() -> None:
+    job = Job(title="Staff TPM", company="Example Co", status="saved")
+    candidate = type("Candidate", (), {
+        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
+    })()
+
+    title, prompt = _build_artefact_draft_prompt(
+        profile=None,
+        job=job,
+        artefact_summary=candidate,
+        draft_kind="cover_letter_draft",
+        content_mode="metadata_only",
+    )
+
+    assert title == "AI cover letter draft"
+    assert "Draft a concise cover letter for this job" in prompt
+    assert "Content mode: metadata_only" in prompt
+    assert "Baseline artefact content is unavailable. Reason from metadata only." in prompt
+
+
+def test_build_supporting_statement_draft_prompt_uses_statement_contract() -> None:
+    job = Job(title="Staff TPM", company="Example Co", status="saved")
+    candidate = type("Candidate", (), {
+        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
+    })()
+
+    title, prompt = _build_artefact_draft_prompt(
+        profile=None,
+        job=job,
+        artefact_summary=candidate,
+        draft_kind="supporting_statement_draft",
+        content_mode="metadata_only",
+    )
+
+    assert title == "AI supporting statement draft"
+    assert "Draft a targeted supporting statement for this job" in prompt
+    assert "Content mode: metadata_only" in prompt
+
+
 def test_generate_job_artefact_tailoring_guidance_stores_visible_output(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -335,7 +414,7 @@ def test_generate_job_artefact_tailoring_guidance_stores_visible_output(
             job_id = job.id
             artefact_id = artefact.id
 
-        def fake_execute_prompt(setting, prompt):
+        def fake_execute_prompt(setting, prompt, *, document=None):
             assert "Selected artefact:" in prompt
             assert "tpm-resume.pdf" in prompt
             return "### Keep\n* **Programme delivery evidence**"
@@ -356,6 +435,7 @@ def test_generate_job_artefact_tailoring_guidance_stores_visible_output(
             assert output.source_context["prompt_contract"] == "artefact_tailoring_v1"
             assert output.source_context["artefact_uuid"] == artefact.uuid
             assert output.source_context["used_extracted_text"] is False
+            assert output.source_context["draft_handoff_contract"] == "artefact_draft_seed_v1"
 
             stored = db.get(AiOutput, output.id)
             assert stored is not None
@@ -408,3 +488,234 @@ def test_generate_job_artefact_tailoring_guidance_uses_local_fallback_for_thin_m
             assert "supporting statement" in output.body
     finally:
         app.dependency_overrides.clear()
+
+
+def test_load_artefact_text_excerpt_reads_textlike_artefacts() -> None:
+    artefact = Artefact(
+        kind="resume",
+        filename="baseline.md",
+        content_type="text/markdown",
+        storage_key="artefacts/baseline.md",
+    )
+
+    excerpt = load_artefact_text_excerpt(
+        artefact,
+        storage=type("FakeStorage", (), {"load": lambda self, key: b"# Resume\n\nPlatform delivery evidence"})(),
+    )
+
+    assert excerpt == "# Resume\n\nPlatform delivery evidence"
+
+
+def test_generate_job_artefact_tailoring_guidance_uses_extracted_text_for_textlike_artefacts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Markdown tailoring target", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="resume",
+                filename="baseline.md",
+                content_type="text/markdown",
+                storage_key="artefacts/baseline.md",
+            )
+            setting = AiProviderSetting(
+                owner_user_id=user.id,
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                api_key_encrypted="sealed",
+                api_key_hint="key...1234",
+                is_enabled=True,
+            )
+            db.add_all([job, artefact, setting])
+            db.commit()
+            user_id = user.id
+            job_id = job.id
+            artefact_id = artefact.id
+
+        monkeypatch.setattr(
+            "app.services.ai.load_artefact_text_excerpt",
+            lambda artefact: "# Resume\n\n* Platform delivery\n* Stakeholder leadership",
+        )
+
+        def fake_execute_prompt(setting, prompt, *, document=None):
+            assert "Extracted artefact text (verified excerpt):" in prompt
+            assert "Platform delivery" in prompt
+            return "### Keep\n* **Platform delivery**"
+
+        monkeypatch.setattr("app.services.ai._execute_prompt", fake_execute_prompt)
+
+        with session_local() as db:
+            user = db.get(User, user_id)
+            job = db.get(Job, job_id)
+            artefact = db.get(Artefact, artefact_id)
+
+            output = generate_job_artefact_tailoring_guidance(db, user, job, artefact)
+            db.commit()
+
+            assert output.provider == "gemini"
+            assert output.source_context["used_extracted_text"] is True
+            assert output.source_context["draft_handoff_contract"] == "artefact_draft_seed_v1"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_generate_job_artefact_draft_stores_visible_output(
+    tmp_path: Path, monkeypatch
+) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Draft target", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="resume",
+                purpose="TPM resume",
+                version_label="v3",
+                notes="Used for senior platform roles.",
+                outcome_context="Helped reach interview loop.",
+                filename="baseline.md",
+                content_type="text/markdown",
+                storage_key="artefacts/baseline.md",
+            )
+            setting = AiProviderSetting(
+                owner_user_id=user.id,
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                api_key_encrypted="sealed",
+                api_key_hint="key...1234",
+                is_enabled=True,
+            )
+            db.add_all([job, artefact, setting])
+            db.commit()
+            user_id = user.id
+            job_id = job.id
+            artefact_id = artefact.id
+
+        monkeypatch.setattr(
+            "app.services.ai.load_artefact_text_excerpt",
+            lambda artefact: "# Resume\n\n* Platform delivery",
+        )
+
+        def fake_execute_prompt(setting, prompt, *, document=None):
+            assert "Content mode: extracted_text" in prompt
+            assert "Platform delivery" in prompt
+            assert document is None
+            return "### Headline\nTechnical Program Manager"
+
+        monkeypatch.setattr("app.services.ai._execute_prompt", fake_execute_prompt)
+
+        with session_local() as db:
+            user = db.get(User, user_id)
+            job = db.get(Job, job_id)
+            artefact = db.get(Artefact, artefact_id)
+
+            output = generate_job_artefact_draft(
+                db,
+                user,
+                job,
+                artefact,
+                draft_kind="resume_draft",
+            )
+            db.commit()
+
+            assert output.output_type == "draft"
+            assert output.title == "AI tailored resume draft"
+            assert output.source_context["prompt_contract"] == "artefact_draft_v1"
+            assert output.source_context["draft_kind"] == "resume_draft"
+            assert output.source_context["content_mode"] == "extracted_text"
+            assert output.source_context["artefact_uuid"] == artefact.uuid
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_generate_job_artefact_draft_uses_gemini_provider_document_for_pdf_when_no_text_excerpt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="PDF draft target", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="resume",
+                filename="baseline.pdf",
+                content_type="application/pdf",
+                storage_key="artefacts/baseline.pdf",
+            )
+            setting = AiProviderSetting(
+                owner_user_id=user.id,
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                api_key_encrypted="sealed",
+                api_key_hint="key...1234",
+                is_enabled=True,
+            )
+            db.add_all([job, artefact, setting])
+            db.commit()
+            user_id = user.id
+            job_id = job.id
+            artefact_id = artefact.id
+
+        monkeypatch.setattr("app.services.ai.load_artefact_text_excerpt", lambda artefact: None)
+        monkeypatch.setattr(
+            "app.services.ai.load_artefact_document_payload",
+            lambda artefact: ("application/pdf", b"%PDF-sample"),
+        )
+
+        def fake_execute_prompt(setting, prompt, *, document=None):
+            assert "Content mode: provider_document" in prompt
+            assert document is not None
+            assert document["mime_type"] == "application/pdf"
+            assert document["data"] == b"%PDF-sample"
+            return "### Headline\nTechnical Program Manager"
+
+        monkeypatch.setattr("app.services.ai._execute_prompt", fake_execute_prompt)
+
+        with session_local() as db:
+            user = db.get(User, user_id)
+            job = db.get(Job, job_id)
+            artefact = db.get(Artefact, artefact_id)
+
+            output = generate_job_artefact_draft(
+                db,
+                user,
+                job,
+                artefact,
+                draft_kind="resume_draft",
+            )
+            db.commit()
+
+            assert output.source_context["content_mode"] == "provider_document"
+            assert output.source_context["provider_document_mime_type"] == "application/pdf"
+            assert output.source_context["used_extracted_text"] is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_call_gemini_maps_raw_timeout_error(monkeypatch) -> None:
+    setting = AiProviderSetting(
+        provider="gemini",
+        model_name="gemini-flash-latest",
+        api_key_encrypted="sealed",
+    )
+
+    monkeypatch.setattr("app.services.ai._open_provider_api_key", lambda setting: "gemini-secret-1234")
+    monkeypatch.setattr("app.services.ai.request.urlopen", lambda *args, **kwargs: (_ for _ in ()).throw(TimeoutError()))
+
+    try:
+        _call_gemini(setting, "hello")
+    except AiExecutionError as exc:
+        assert "Google Gemini timed out before returning a response" in str(exc)
+    else:
+        raise AssertionError("Expected AiExecutionError")
