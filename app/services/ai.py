@@ -29,6 +29,7 @@ KNOWN_OUTPUT_TYPES = (
     "draft",
     "profile_observation",
     "artefact_suggestion",
+    "artefact_analysis",
     "tailoring_guidance",
 )
 
@@ -286,7 +287,11 @@ def _build_artefact_suggestion_prompt(
     title = "AI artefact suggestion"
     if candidates:
         candidate_block = "\n\n".join(
-            f"Candidate {index + 1}:\n{candidate.summary_text}"
+            (
+                f"Candidate {index + 1}:\n"
+                f"{candidate.summary_text}\n"
+                f"Outcome signals:\n{candidate.outcome_signal_summary.summary_text}"
+            )
             for index, candidate in enumerate(candidates)
         )
     else:
@@ -301,6 +306,93 @@ def _build_artefact_suggestion_prompt(
         f"User profile:\n{_profile_context(profile)}\n\n"
         f"Job:\n{_job_context(job)}\n\n"
         f"Candidate artefacts:\n{candidate_block}"
+    )
+    return title, prompt
+
+
+def _infer_job_artefact_requirements(job: Job) -> dict[str, object]:
+    text = "\n".join(
+        part for part in (job.title or "", job.description_raw or "") if part
+    ).lower()
+    required: list[str] = []
+    optional: list[str] = []
+
+    def add_unique(items: list[str], label: str) -> None:
+        if label not in items:
+            items.append(label)
+
+    if "cover letter" in text:
+        add_unique(required, "cover letter")
+    if "supporting statement" in text or "personal statement" in text:
+        add_unique(required, "supporting statement")
+    if "writing sample" in text:
+        add_unique(required, "writing sample")
+    if "portfolio" in text:
+        add_unique(optional, "portfolio")
+    if "attestation" in text:
+        add_unique(required, "attestation")
+
+    summary_parts: list[str] = []
+    if required:
+        summary_parts.append("Required or explicitly requested: " + ", ".join(required))
+    else:
+        summary_parts.append("No explicit additional artefact requirement was detected in the job text.")
+    if optional:
+        summary_parts.append("Optional or supplementary artefacts mentioned: " + ", ".join(optional))
+
+    return {
+        "required": required,
+        "optional": optional,
+        "summary_text": " ".join(summary_parts),
+    }
+
+
+def _prepare_artefact_analysis_context(
+    artefact: Artefact,
+    *,
+    setting: AiProviderSetting | None = None,
+) -> tuple[str, bool, str | None, dict[str, object] | None]:
+    extracted_text = load_artefact_text_excerpt(artefact)
+    if extracted_text:
+        return "extracted_text", True, extracted_text, None
+    if setting is not None and setting.provider == "gemini":
+        provider_document = load_artefact_document_payload(artefact)
+        if provider_document is not None:
+            mime_type, raw = provider_document
+            return "provider_document", False, None, {"mime_type": mime_type, "data": raw}
+    return "metadata_only", False, None, None
+
+
+def _build_artefact_analysis_prompt(
+    *,
+    profile: UserProfile | None,
+    job: Job,
+    artefact_summary: ArtefactCandidateSummary,
+    content_mode: str,
+    extracted_text: str | None = None,
+    requirement_summary: str,
+) -> tuple[str, str]:
+    title = "AI artefact analysis"
+    content_block = "Verified artefact text is unavailable. Analyze from metadata and job context only."
+    if content_mode == "extracted_text" and extracted_text:
+        content_block = f"Verified extracted artefact text:\n{extracted_text}"
+    elif content_mode == "provider_document":
+        content_block = "A provider-readable document payload is attached. Use it as the primary artefact content source."
+    prompt = (
+        "Analyze one artefact against one job. "
+        "Use markdown sections titled 'Artefact type and structure', 'What this artefact emphasizes', "
+        "'Evidence strength', 'Gaps or weak signals', 'Job requirement match', 'How well this fits the vacancy', "
+        "and 'Best next improvements'. "
+        "Keep the assessment qualitative and concrete. Do not assign scores. "
+        "If verified artefact text is unavailable, say clearly that you are reasoning from metadata and job context only. "
+        "Treat historical outcome signals as secondary supporting context, not the main explanation of quality.\n\n"
+        f"User profile:\n{_profile_context(profile)}\n\n"
+        f"Job:\n{_job_context(job)}\n\n"
+        f"Inferred artefact requirements:\n{requirement_summary}\n\n"
+        f"Selected artefact:\n{artefact_summary.summary_text}\n"
+        f"Outcome signals:\n{artefact_summary.outcome_signal_summary.summary_text}\n\n"
+        f"Content mode: {content_mode}\n"
+        f"{content_block}"
     )
     return title, prompt
 
@@ -330,7 +422,9 @@ def _build_artefact_tailoring_prompt(
         "verified present content and keep any other claims clearly separate. Be concrete and job-specific.\n\n"
         f"User profile:\n{_profile_context(profile)}\n\n"
         f"Job:\n{_job_context(job)}\n\n"
-        f"Selected artefact:\n{artefact_summary.summary_text}{extracted_text_block}{prior_context}"
+        f"Selected artefact:\n{artefact_summary.summary_text}\n"
+        f"Outcome signals:\n{artefact_summary.outcome_signal_summary.summary_text}"
+        f"{extracted_text_block}{prior_context}"
     )
     return title, prompt
 
@@ -406,7 +500,8 @@ def _build_artefact_draft_prompt(
         f"{instruction}\n\n"
         f"User profile:\n{_profile_context(profile)}\n\n"
         f"Job:\n{_job_context(job)}\n\n"
-        f"Selected baseline artefact:\n{artefact_summary.summary_text}\n\n"
+        f"Selected baseline artefact:\n{artefact_summary.summary_text}\n"
+        f"Outcome signals:\n{artefact_summary.outcome_signal_summary.summary_text}\n\n"
         f"Content mode: {content_mode}\n"
         f"{content_block}"
         f"{tailoring_block}"
@@ -791,6 +886,80 @@ def generate_job_artefact_suggestion(
     db.add(output)
     db.flush()
     return output
+
+
+def build_job_artefact_analysis(
+    db: Session,
+    user: User,
+    job: Job,
+    artefact: Artefact,
+    *,
+    profile: UserProfile | None = None,
+    persist: bool = False,
+) -> AiOutput:
+    setting = get_enabled_ai_provider(db, user)
+    if setting is None:
+        raise AiExecutionError("Enable an AI provider in Settings before generating AI output")
+
+    artefact_summary = summarise_artefact_for_ai(artefact, current_job=job)
+    requirement_info = _infer_job_artefact_requirements(job)
+    content_mode, used_extracted_text, extracted_text, document_payload = _prepare_artefact_analysis_context(
+        artefact,
+        setting=setting,
+    )
+    title, prompt = _build_artefact_analysis_prompt(
+        profile=profile,
+        job=job,
+        artefact_summary=artefact_summary,
+        content_mode=content_mode,
+        extracted_text=extracted_text,
+        requirement_summary=str(requirement_info["summary_text"]),
+    )
+    body = _execute_prompt(setting, prompt, document=document_payload)
+    output = AiOutput(
+        owner_user_id=user.id,
+        job_id=job.id,
+        artefact_id=artefact.id,
+        output_type="artefact_analysis",
+        title=title,
+        body=body,
+        provider=setting.provider,
+        model_name=setting.model_name,
+        status="active",
+        source_context={
+            "surface": "job_workspace",
+            "job_uuid": job.uuid,
+            "artefact_uuid": artefact.uuid,
+            "prompt_contract": "artefact_analysis_v1",
+            "content_mode": content_mode,
+            "used_extracted_text": used_extracted_text,
+            "inferred_requirement_summary": requirement_info["summary_text"],
+            "required_artefact_types": requirement_info["required"],
+            "optional_artefact_types": requirement_info["optional"],
+        },
+    )
+    if persist:
+        db.add(output)
+        db.flush()
+    return output
+
+
+def generate_job_artefact_analysis(
+    db: Session,
+    user: User,
+    job: Job,
+    artefact: Artefact,
+    *,
+    profile: UserProfile | None = None,
+) -> AiOutput:
+    return build_job_artefact_analysis(
+        db,
+        user,
+        job,
+        artefact,
+        profile=profile,
+        persist=True,
+    )
 
 
 def generate_job_artefact_tailoring_guidance(

@@ -164,6 +164,7 @@ def test_job_workspace_ui_contract_switches_main_surface_by_section_query(tmp_pa
         assert 'data-ui-component="artefact-list"' in html
         assert 'data-ui-component="artefact-ai-workspace"' in html
         assert "Artefacts" in html
+        assert "Analyze" in html
         assert 'data-ui-section="overview"' not in html
         assert "Role &amp; notes" not in html
     finally:

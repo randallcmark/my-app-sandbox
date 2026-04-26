@@ -2,6 +2,8 @@ from io import BytesIO
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 
+from sqlalchemy import select
+
 from app.auth.users import create_local_user
 from app.db.models.ai_output import AiOutput
 from app.db.models.job import Job
@@ -12,6 +14,7 @@ from app.db.models.user import User
 from app.main import app
 from app.services.ai import (
     _call_gemini,
+    _build_artefact_analysis_prompt,
     _build_artefact_draft_prompt,
     _build_artefact_tailoring_prompt,
     _build_artefact_suggestion_prompt,
@@ -20,12 +23,26 @@ from app.services.ai import (
     _timeout_error_message,
     _url_error_message,
     AiExecutionError,
+    build_job_artefact_analysis,
+    generate_job_artefact_analysis,
     generate_job_artefact_draft,
     generate_job_artefact_tailoring_guidance,
     generate_job_artefact_suggestion,
 )
 from app.services.artefacts import load_artefact_text_excerpt
 from tests.test_local_auth_routes import build_client
+
+
+def _candidate(summary_text: str, outcome_text: str = "strongest signal interview-linked, evidence moderate"):
+    return type(
+        "Candidate",
+        (),
+        {
+            "summary_text": summary_text,
+            "artefact_uuid": "artefact-1",
+            "outcome_signal_summary": type("OutcomeSummary", (), {"summary_text": outcome_text})(),
+        },
+    )()
 
 
 def _setting(provider: str, *, base_url: str | None = None) -> AiProviderSetting:
@@ -160,10 +177,7 @@ def test_build_job_prompt_keeps_default_recommendation_instruction_for_non_focus
 def test_build_artefact_suggestion_prompt_includes_candidate_summaries() -> None:
     profile = UserProfile(target_roles="Technical Program Manager")
     job = Job(title="Staff TPM", status="saved", description_raw="Lead cross-functional delivery.")
-    candidate = type("Candidate", (), {
-        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Linked jobs: 2",
-        "artefact_uuid": "artefact-1",
-    })()
+    candidate = _candidate("Kind: resume | Filename: tpm-resume.pdf | Linked jobs: 2")
 
     title, prompt = _build_artefact_suggestion_prompt(
         profile=profile,
@@ -175,6 +189,8 @@ def test_build_artefact_suggestion_prompt_includes_candidate_summaries() -> None
     assert "Best starting artefact" in prompt
     assert "Candidate 1:" in prompt
     assert "Kind: resume | Filename: tpm-resume.pdf" in prompt
+    assert "Outcome signals:" in prompt
+    assert "strongest signal interview-linked, evidence moderate" in prompt
     assert "Target roles: Technical Program Manager" in prompt
     assert "Title: Staff TPM" in prompt
 
@@ -190,6 +206,32 @@ def test_build_artefact_suggestion_prompt_handles_empty_candidate_list() -> None
 
     assert "No existing artefacts are available for this user." in prompt
     assert "Prefer 'no suitable artefact' over weak guesses." in prompt
+
+
+def test_build_artefact_analysis_prompt_includes_requirement_and_content_mode_context() -> None:
+    profile = UserProfile(target_roles="Technical Program Manager")
+    job = Job(
+        title="Staff TPM",
+        status="saved",
+        description_raw="Please provide a cover letter and supporting statement.",
+    )
+    candidate = _candidate("Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong")
+
+    title, prompt = _build_artefact_analysis_prompt(
+        profile=profile,
+        job=job,
+        artefact_summary=candidate,
+        content_mode="metadata_only",
+        requirement_summary="Required or explicitly requested: cover letter, supporting statement",
+    )
+
+    assert title == "AI artefact analysis"
+    assert "Artefact type and structure" in prompt
+    assert "Inferred artefact requirements:" in prompt
+    assert "cover letter, supporting statement" in prompt
+    assert "Outcome signals:" in prompt
+    assert "Content mode: metadata_only" in prompt
+    assert "reasoning from metadata and job context only" in prompt.lower()
 
 
 def test_generate_job_artefact_suggestion_stores_visible_output(tmp_path: Path, monkeypatch) -> None:
@@ -250,6 +292,147 @@ def test_generate_job_artefact_suggestion_stores_visible_output(tmp_path: Path, 
         app.dependency_overrides.clear()
 
 
+def test_build_job_artefact_analysis_can_run_without_persisting_output(
+    tmp_path: Path, monkeypatch
+) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(
+                owner_user_id=user.id,
+                title="Analysis helper target",
+                status="saved",
+                description_raw="Please include a cover letter.",
+            )
+            artefact = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="resume",
+                purpose="TPM resume",
+                filename="baseline.md",
+                content_type="text/markdown",
+                storage_key="artefacts/baseline.md",
+            )
+            setting = AiProviderSetting(
+                owner_user_id=user.id,
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                api_key_encrypted="sealed",
+                api_key_hint="key...1234",
+                is_enabled=True,
+            )
+            db.add_all([job, artefact, setting])
+            db.commit()
+            user_id = user.id
+            job_id = job.id
+            artefact_id = artefact.id
+
+        monkeypatch.setattr(
+            "app.services.ai.load_artefact_text_excerpt",
+            lambda artefact: "# Resume\n\nPlatform delivery evidence",
+        )
+
+        def fake_execute_prompt(setting, prompt, *, document=None):
+            assert "Inferred artefact requirements:" in prompt
+            assert "cover letter" in prompt
+            return "### Artefact type and structure\n* Resume baseline"
+
+        monkeypatch.setattr("app.services.ai._execute_prompt", fake_execute_prompt)
+
+        with session_local() as db:
+            user = db.get(User, user_id)
+            job = db.get(Job, job_id)
+            artefact = db.get(Artefact, artefact_id)
+
+            output = build_job_artefact_analysis(
+                db,
+                user,
+                job,
+                artefact,
+                persist=False,
+            )
+
+            assert output.output_type == "artefact_analysis"
+            assert output.source_context["prompt_contract"] == "artefact_analysis_v1"
+            assert output.source_context["used_extracted_text"] is True
+            assert "cover letter" in output.source_context["inferred_requirement_summary"]
+            stored = db.scalars(select(AiOutput).where(AiOutput.output_type == "artefact_analysis")).all()
+            assert stored == []
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_generate_job_artefact_analysis_stores_visible_output(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(
+                owner_user_id=user.id,
+                title="Analysis target",
+                status="saved",
+                description_raw="A writing sample is required.",
+            )
+            artefact = Artefact(
+                owner_user_id=user.id,
+                job_id=job.id,
+                kind="resume",
+                filename="baseline.pdf",
+                content_type="application/pdf",
+                storage_key="artefacts/baseline.pdf",
+            )
+            setting = AiProviderSetting(
+                owner_user_id=user.id,
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                api_key_encrypted="sealed",
+                api_key_hint="key...1234",
+                is_enabled=True,
+            )
+            db.add_all([job, artefact, setting])
+            db.commit()
+            user_id = user.id
+            job_id = job.id
+            artefact_id = artefact.id
+
+        monkeypatch.setattr("app.services.ai.load_artefact_text_excerpt", lambda artefact: None)
+        monkeypatch.setattr(
+            "app.services.ai.load_artefact_document_payload",
+            lambda artefact: ("application/pdf", b"%PDF-sample"),
+        )
+
+        def fake_execute_prompt(setting, prompt, *, document=None):
+            assert "Content mode: provider_document" in prompt
+            assert "writing sample" in prompt
+            assert document is not None
+            return "### Artefact type and structure\n* Resume-like PDF"
+
+        monkeypatch.setattr("app.services.ai._execute_prompt", fake_execute_prompt)
+
+        with session_local() as db:
+            user = db.get(User, user_id)
+            job = db.get(Job, job_id)
+            artefact = db.get(Artefact, artefact_id)
+
+            output = generate_job_artefact_analysis(db, user, job, artefact)
+            db.commit()
+
+            assert output.output_type == "artefact_analysis"
+            assert output.title == "AI artefact analysis"
+            assert output.source_context["prompt_contract"] == "artefact_analysis_v1"
+            assert output.source_context["content_mode"] == "provider_document"
+            assert "writing sample" in output.source_context["inferred_requirement_summary"]
+
+            stored = db.get(AiOutput, output.id)
+            assert stored is not None
+            assert stored.body == "### Artefact type and structure\n* Resume-like PDF"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_generate_job_artefact_suggestion_uses_local_fallback_when_no_candidates(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -295,9 +478,7 @@ def test_build_artefact_tailoring_prompt_uses_selected_artefact_context() -> Non
         filename="tpm-resume.pdf",
         storage_key="artefacts/tpm-resume.pdf",
     )
-    candidate = type("Candidate", (), {
-        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
-    })()
+    candidate = _candidate("Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong")
     prior = AiOutput(body="### Best starting artefact\n* **tpm-resume.pdf**")
 
     title, prompt = _build_artefact_tailoring_prompt(
@@ -312,6 +493,7 @@ def test_build_artefact_tailoring_prompt_uses_selected_artefact_context() -> Non
     assert "sections titled 'Keep', 'Strengthen', 'De-emphasise or remove'" in prompt
     assert "Selected artefact:" in prompt
     assert "Filename: tpm-resume.pdf" in prompt
+    assert "Outcome signals:" in prompt
     assert "Prior artefact suggestion:" in prompt
     assert "Target roles: Technical Program Manager" in prompt
 
@@ -319,9 +501,7 @@ def test_build_artefact_tailoring_prompt_uses_selected_artefact_context() -> Non
 def test_build_artefact_draft_prompt_includes_content_mode_and_tailoring_guidance() -> None:
     profile = UserProfile(target_roles="Technical Program Manager")
     job = Job(title="Staff TPM", status="saved", description_raw="Lead delivery.")
-    candidate = type("Candidate", (), {
-        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
-    })()
+    candidate = _candidate("Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong")
     tailoring = AiOutput(body="### Keep\n* **Programme delivery**")
 
     title, prompt = _build_artefact_draft_prompt(
@@ -335,6 +515,7 @@ def test_build_artefact_draft_prompt_includes_content_mode_and_tailoring_guidanc
     )
 
     assert title == "AI tailored resume draft"
+    assert "Outcome signals:" in prompt
     assert "Content mode: extracted_text" in prompt
     assert "Verified extracted artefact text:" in prompt
     assert "Tailoring guidance:" in prompt
@@ -343,9 +524,7 @@ def test_build_artefact_draft_prompt_includes_content_mode_and_tailoring_guidanc
 
 def test_build_cover_letter_draft_prompt_uses_cover_letter_contract() -> None:
     job = Job(title="Staff TPM", company="Example Co", status="saved")
-    candidate = type("Candidate", (), {
-        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
-    })()
+    candidate = _candidate("Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong")
 
     title, prompt = _build_artefact_draft_prompt(
         profile=None,
@@ -357,15 +536,14 @@ def test_build_cover_letter_draft_prompt_uses_cover_letter_contract() -> None:
 
     assert title == "AI cover letter draft"
     assert "Draft a concise cover letter for this job" in prompt
+    assert "Outcome signals:" in prompt
     assert "Content mode: metadata_only" in prompt
     assert "Baseline artefact content is unavailable. Reason from metadata only." in prompt
 
 
 def test_build_supporting_statement_draft_prompt_uses_statement_contract() -> None:
     job = Job(title="Staff TPM", company="Example Co", status="saved")
-    candidate = type("Candidate", (), {
-        "summary_text": "Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong",
-    })()
+    candidate = _candidate("Kind: resume | Filename: tpm-resume.pdf | Metadata quality: strong")
 
     title, prompt = _build_artefact_draft_prompt(
         profile=None,
@@ -377,6 +555,7 @@ def test_build_supporting_statement_draft_prompt_uses_statement_contract() -> No
 
     assert title == "AI supporting statement draft"
     assert "Draft a targeted supporting statement for this job" in prompt
+    assert "Outcome signals:" in prompt
     assert "Content mode: metadata_only" in prompt
 
 

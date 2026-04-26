@@ -190,11 +190,11 @@ owned artefacts from an owner-scoped library route, and attach an existing artef
 without copying the file. Application/interview-level reuse, extraction, and AI suggestions remain
 planned follow-on work.
 
-Detailed resumable planning for AI-assisted artefact selection, tailoring, draft generation, and
-outcome-aware learning now lives in `docs/ARTEFACT_AI_PLAN.md`. Phase B through Phase D are now
-implemented for the first intended slices, and the active next recommended slice is Phase E
-sub-slice 1: conservative artefact outcome-signal summaries in the service layer before broader
-outcome-aware prompt changes. Phase B sub-slice 1 is now implemented in the service layer: deterministic artefact
+Detailed resumable planning for AI-assisted artefact analysis, selection, tailoring, draft generation, and
+later outcome-aware refinement now lives in `docs/ARTEFACT_AI_PLAN.md`. The active next recommended
+slice is now Phase A: analysis-first artefact understanding and fit evaluation. Existing outcome
+summary helpers remain implemented as supporting infrastructure rather than the lead roadmap.
+Phase B sub-slice 1 is now implemented in the service layer: deterministic artefact
 shortlist and compact AI summary helpers, and sub-slice 2 is now implemented in the AI service
 layer: a dedicated `artefact_suggestion` prompt contract and generation entry point. Sub-slice 3 is
 also now implemented: Job Workspace exposes `Suggest artefacts` and renders visible
@@ -226,8 +226,9 @@ document context layer now also supports DOCX extraction plus best-effort host-b
 for legacy Word/RTF and PDF files when available. A narrow Gemini-backed `provider_document` path
 now also exists for draft generation when no extracted text is available but a supported binary
 artefact can be passed directly, reducing unnecessary metadata-only fallbacks on non-text files.
-Phase E is now starting with conservative per-artefact outcome-signal summaries so later prompts
-can use explicit evidence rather than inferring from ad hoc counts.
+Analysis-first artefact foundation work is now starting with explicit `artefact_analysis` support,
+job-text requirement inference, and qualitative fit evaluation. Outcome-aware summaries remain
+available as soft background context only.
 
 Implementation targets:
 

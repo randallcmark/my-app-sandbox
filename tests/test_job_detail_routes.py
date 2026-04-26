@@ -332,6 +332,68 @@ def test_job_detail_renders_selected_artefact_link_for_tailoring_guidance(
         app.dependency_overrides.clear()
 
 
+def test_job_detail_renders_selected_artefact_link_for_artefact_analysis(
+    tmp_path: Path, monkeypatch
+) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Analysis link target", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="analysis-resume.pdf",
+                storage_key="artefacts/analysis-resume.pdf",
+            )
+            db.add_all([job, artefact])
+            db.flush()
+            db.add(
+                JobArtefactLink(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                )
+            )
+            db.add(
+                AiOutput(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                    output_type="artefact_analysis",
+                    title="AI artefact analysis",
+                    body="### Artefact type and structure\n* Resume baseline",
+                    provider="gemini",
+                    model_name="gemini-flash-latest",
+                    source_context={
+                        "surface": "job_workspace",
+                        "prompt_contract": "artefact_analysis_v1",
+                        "artefact_uuid": artefact.uuid,
+                        "content_mode": "metadata_only",
+                        "inferred_requirement_summary": "Required or explicitly requested: cover letter",
+                    },
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            artefact_uuid = artefact.uuid
+
+        login(client, "jobseeker@example.com")
+
+        response = client.get(f"/jobs/{job_uuid}?section=documents")
+
+        assert response.status_code == 200
+        assert "Analyzed artefact" in response.text
+        assert f'href="/artefacts/{artefact_uuid}/download"' in response.text
+        assert "analysis-resume.pdf" in response.text
+        assert "content: metadata_only" in response.text
+        assert "Lower-confidence analysis" in response.text
+        assert "Required or explicitly requested: cover letter" in response.text
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_job_detail_renders_draft_action_for_job_artefacts(tmp_path: Path, monkeypatch) -> None:
     client, session_local = build_client(tmp_path, monkeypatch)
     try:
@@ -363,10 +425,12 @@ def test_job_detail_renders_draft_action_for_job_artefacts(tmp_path: Path, monke
         response = client.get(f"/jobs/{job_uuid}?section=documents")
 
         assert response.status_code == 200
+        assert "Analyze" in response.text
         assert "Draft tailored resume" in response.text
         assert "Draft cover letter" in response.text
         assert "Draft supporting statement" in response.text
         assert "Draft attestation" in response.text
+        assert f'action="/jobs/{job_uuid}/artefacts/{artefact_uuid}/analysis"' in response.text
         assert f'action="/jobs/{job_uuid}/artefacts/{artefact_uuid}/drafts"' in response.text
     finally:
         app.dependency_overrides.clear()
@@ -745,6 +809,93 @@ def test_job_detail_tailoring_guidance_creates_visible_output(tmp_path: Path, mo
             assert len(outputs) == 1
             assert outputs[0].job.uuid == job_uuid
             assert outputs[0].artefact.uuid == artefact_uuid
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_job_detail_artefact_analysis_creates_visible_output(tmp_path: Path, monkeypatch) -> None:
+    client, session_local = build_client(tmp_path, monkeypatch)
+    try:
+        with session_local() as db:
+            user = create_local_user(db, email="jobseeker@example.com", password="password")
+            db.flush()
+            job = Job(owner_user_id=user.id, title="Analysis route target", status="saved")
+            artefact = Artefact(
+                owner_user_id=user.id,
+                kind="resume",
+                filename="baseline.pdf",
+                storage_key="artefacts/baseline.pdf",
+            )
+            db.add_all([job, artefact])
+            db.flush()
+            db.add(
+                JobArtefactLink(
+                    owner_user_id=user.id,
+                    job_id=job.id,
+                    artefact_id=artefact.id,
+                )
+            )
+            db.add(
+                AiProviderSetting(
+                    owner_user_id=user.id,
+                    provider="gemini",
+                    model_name="gemini-flash-latest",
+                    api_key_encrypted="sealed",
+                    api_key_hint="key...1234",
+                    is_enabled=True,
+                )
+            )
+            db.commit()
+            job_uuid = job.uuid
+            artefact_uuid = artefact.uuid
+
+        login(client, "jobseeker@example.com")
+
+        def fake_generate_job_artefact_analysis(db, user, job, artefact, *, profile=None):
+            output = AiOutput(
+                owner_user_id=user.id,
+                job_id=job.id,
+                artefact_id=artefact.id,
+                output_type="artefact_analysis",
+                title="AI artefact analysis",
+                body="### Artefact type and structure\n* Resume baseline",
+                provider="gemini",
+                model_name="gemini-flash-latest",
+                status="active",
+                source_context={
+                    "surface": "job_workspace",
+                    "prompt_contract": "artefact_analysis_v1",
+                    "artefact_uuid": artefact.uuid,
+                    "content_mode": "provider_document",
+                    "inferred_requirement_summary": "No explicit additional artefact requirement was detected in the job text.",
+                },
+            )
+            db.add(output)
+            db.flush()
+            return output
+
+        monkeypatch.setattr(
+            "app.api.routes.job_detail.generate_job_artefact_analysis",
+            fake_generate_job_artefact_analysis,
+        )
+
+        response = client.post(
+            f"/jobs/{job_uuid}/artefacts/{artefact_uuid}/analysis",
+            data={},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "ai_status=Artefact%20analysis%20generated" in response.headers["location"]
+
+        detail_response = client.get(response.headers["location"])
+        assert "AI artefact analysis" in detail_response.text
+        assert "Artefact type and structure" in detail_response.text
+
+        with session_local() as db:
+            outputs = db.scalars(select(AiOutput).where(AiOutput.output_type == "artefact_analysis")).all()
+            assert len(outputs) == 1
+            assert outputs[0].source_context["prompt_contract"] == "artefact_analysis_v1"
     finally:
         app.dependency_overrides.clear()
 

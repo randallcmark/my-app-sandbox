@@ -1,7 +1,7 @@
 # Artefact AI Plan
 
-This document is the resumable implementation reference for AI-assisted artefact selection,
-tailoring, and generation.
+This document is the resumable implementation reference for AI-assisted artefact analysis,
+selection, tailoring, and generation.
 
 It is intentionally more detailed than the roadmap. Use it when resuming work on artefact-aware AI
 so implementation can move forward in discrete slices without redefining the problem each time.
@@ -11,7 +11,8 @@ Status summary:
 - Artefact library and metadata groundwork: implemented.
 - Visible AI records and provider execution: implemented for job/workspace, Inbox review, and
   Focus nudge.
-- Artefact-aware AI: implemented through Phase D, with Phase E now active.
+- Artefact-aware AI: implemented through the first suggestion/tailoring/draft slices, with
+  analysis-first foundation work now active.
 
 ## Product Intent
 
@@ -62,25 +63,32 @@ These are separate slices with different risks, inputs, and UI surfaces.
 
 ## Artefact AI Roadmap
 
-### Phase A: Artefact Intelligence Foundation
+### Phase A: Artefact Analysis Foundation
 
-Goal: make artefacts legible to the system before trying to generate new ones.
+Goal: understand what an artefact contains, how it is structured, and how it fits a vacancy before
+trying to optimize or generate from it.
 
 Implementation targets:
 
-- define the artefact summary contract used by AI prompts;
-- support visible artefact analysis records as `AiOutput`;
-- add cheap, reliable outcome summaries for linked artefacts;
-- keep the system useful even when no extracted document text exists.
+- canonical extracted text / provider-document / metadata ladder;
+- artefact structure and content analysis;
+- requirement inference from job text;
+- visible `artefact_analysis` output support;
+- hidden reusable analysis helper contract.
 
 Expected result:
 
-- the system can describe what an artefact is for, where it has been used, and what is known about
-  its outcomes.
+- the system can describe what an artefact emphasizes, what evidence it contains, what is missing,
+  and how well it appears to match a given vacancy.
 
 ### Phase B: Existing Artefact Suggestion
 
 Goal: for one job, recommend which existing artefacts should be reused or adapted.
+
+Note:
+
+- primary reasoning should ultimately come from analysed content/structure fit;
+- historical outcomes remain supporting context only.
 
 Implementation targets:
 
@@ -119,6 +127,11 @@ Current status:
 
 Goal: compare one selected artefact against the job and explain what to change.
 
+Note:
+
+- tailoring should ultimately consume explicit analysis findings rather than relying mainly on
+  metadata summaries.
+
 Current status:
 
 - sub-slice 1 implemented: the `tailoring_guidance` output contract now exists in the AI layer,
@@ -151,6 +164,11 @@ Expected result:
 ### Phase D: Draft Generation
 
 Goal: produce usable draft artefacts or required supporting documents.
+
+Note:
+
+- future quality improvements here should come from better baseline analysis and fit evaluation,
+  not from stronger outcome scoring.
 
 Current status:
 
@@ -219,24 +237,91 @@ Document context strategy:
    - use artefact metadata, tailoring guidance, and job context when no text extraction exists;
    - drafts from this mode must remain more cautious and scaffold-like.
 
-### Phase E: Outcome-Aware Learning
+### Phase E: Outcome-Aware Refinement
 
-Goal: use historic outcomes to improve future suggestions.
+Goal: use historic outcomes as secondary supporting context after analysis-first reasoning is
+strong enough.
 
 Current status:
 
-- sub-slice 1 in progress: add conservative artefact outcome-signal summaries in the service layer
-  so later prompts can consume explicit evidence instead of inferring from ad hoc counts.
+- supporting groundwork implemented: conservative artefact outcome-signal summaries now exist in
+  the service layer and prompt contracts can consume them explicitly;
+- this is no longer the lead roadmap track.
 
 Implementation targets:
 
 - summarise artefact-outcome patterns conservatively;
-- support similarity reasoning without overstating confidence;
-- surface evidence counts and uncertainty.
+- support later refinement without overstating confidence;
+- surface evidence counts and uncertainty only as soft context.
 
 Expected result:
 
-- artefact suggestions improve over time using the user's own history.
+- later artefact suggestions can be refined by the user's own history without treating outcomes as
+  the primary explanation of artefact quality.
+
+## Detailed Plan: Phase A Artefact Analysis Foundation
+
+This is now the active build track.
+
+### User Value
+
+The user should be able to understand:
+
+- what the artefact appears to contain structurally;
+- what it emphasizes;
+- where its evidence is strong or vague;
+- what role-level, tooling, domain, or seniority signals are present;
+- what the job appears to require;
+- how well the artefact seems to fit this specific vacancy;
+- what to improve next.
+
+### Output Contract
+
+Add a visible `AiOutput` type:
+
+- `artefact_analysis`
+
+Prompt contract:
+
+- `artefact_analysis_v1`
+
+Dual-mode behavior:
+
+- explicit visible record when the user asks to analyze an artefact;
+- hidden helper analysis available for later reuse by suggestion, tailoring, and drafting without
+  persistence.
+
+### Analysis Inputs
+
+Use the best available artefact context in this order:
+
+1. `extracted_text`
+2. `provider_document`
+3. `metadata_only`
+
+Also infer requirement context from job text without schema changes, including likely required or
+supplementary artefacts such as:
+
+- cover letter
+- supporting statement
+- personal statement
+- writing sample
+- portfolio
+- attestation
+
+### Expected Output Shape
+
+Use markdown sections titled:
+
+- `Artefact type and structure`
+- `What this artefact emphasizes`
+- `Evidence strength`
+- `Gaps or weak signals`
+- `Job requirement match`
+- `How well this fits the vacancy`
+- `Best next improvements`
+
+Keep the output qualitative. No scoring badge in the first slice.
 
 ## Detailed Plan: Phase E Outcome-Aware Learning
 
@@ -284,8 +369,8 @@ Do not infer more than the data can justify.
 
 ### Sub-Slices
 
-1. Per-artefact outcome-signal summaries. In progress.
-2. Use those summaries consistently in artefact AI prompt contracts.
+1. Per-artefact outcome-signal summaries. Implemented.
+2. Use those summaries consistently in artefact AI prompt contracts. In progress.
 3. Add cautious cross-artefact aggregate summaries where evidence density is meaningful.
 4. Surface later outcome-aware hints in UI only where they materially improve decisions.
 

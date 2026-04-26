@@ -22,6 +22,7 @@ from app.db.models.job import Job
 from app.db.models.user import User
 from app.services.ai import (
     AiExecutionError,
+    generate_job_artefact_analysis,
     generate_job_ai_output,
     generate_job_artefact_draft,
     generate_job_artefact_suggestion,
@@ -487,6 +488,7 @@ def _ai_badge(output_type: str) -> str:
         "draft": ("Draft", "accent"),
         "profile_observation": ("Profile", "warn"),
         "artefact_suggestion": ("Artefact", "accent"),
+        "artefact_analysis": ("Analysis", "accent"),
         "tailoring_guidance": ("Tailoring", "success"),
     }
     label, tone = labels.get(output_type, ("AI output", "accent"))
@@ -612,6 +614,43 @@ def _tailoring_guidance_links(
     )
 
 
+def _artefact_analysis_links(
+    output: AiOutput,
+    artefact_lookup: dict[str, Artefact],
+) -> str:
+    source_context = output.source_context or {}
+    artefact_uuid = source_context.get("artefact_uuid")
+    if not isinstance(artefact_uuid, str) or not artefact_uuid:
+        return ""
+    artefact = artefact_lookup.get(artefact_uuid)
+    if artefact is None:
+        return ""
+    content_mode = source_context.get("content_mode")
+    content_note = ""
+    if isinstance(content_mode, str) and content_mode:
+        content_note = f' <span class="muted">(content: {escape(content_mode)})</span>'
+    confidence_note = ""
+    if content_mode == "metadata_only":
+        confidence_note = (
+            '<p class="muted">Lower-confidence analysis: based on artefact metadata and job context because verified document text was not available.</p>'
+        )
+    requirement_summary = source_context.get("inferred_requirement_summary")
+    requirement_note = ""
+    if isinstance(requirement_summary, str) and requirement_summary:
+        requirement_note = f"<p class=\"muted\">{escape(requirement_summary)}</p>"
+    return (
+        '<div class="ai-output-links">'
+        '<p class="muted">Analyzed artefact</p>'
+        '<ul>'
+        f'<li><a href="/artefacts/{escape(artefact.uuid, quote=True)}/download">{escape(artefact.filename)}</a>'
+        f' <span class="muted">({escape(artefact.kind)})</span>{content_note}</li>'
+        '</ul>'
+        f"{confidence_note}"
+        f"{requirement_note}"
+        '</div>'
+    )
+
+
 def _draft_links(
     output: AiOutput,
     artefact_lookup: dict[str, Artefact],
@@ -671,6 +710,8 @@ def _ai_outputs_panel(
         extra_links = ""
         if output.output_type == "artefact_suggestion":
             extra_links = _artefact_suggestion_links(output, artefact_lookup)
+        elif output.output_type == "artefact_analysis":
+            extra_links = _artefact_analysis_links(output, artefact_lookup)
         elif output.output_type == "tailoring_guidance":
             extra_links = _tailoring_guidance_links(output, artefact_lookup)
         elif output.output_type == "draft":
@@ -1267,7 +1308,7 @@ def _artefact_primary_badge(artefact: Artefact) -> str:
 
 def _latest_artefact_ai_output(outputs: list[AiOutput], artefacts: list[Artefact]) -> AiOutput | None:
     artefact_ids = {artefact.id for artefact in artefacts}
-    preferred = ("draft", "tailoring_guidance", "artefact_suggestion")
+    preferred = ("draft", "tailoring_guidance", "artefact_analysis", "artefact_suggestion")
     for output_type in preferred:
         for output in outputs:
             if output.output_type != output_type:
@@ -1300,6 +1341,7 @@ def _artefact_local_ai_workspace(job: Job, output: AiOutput | None, artefact_loo
 
     source_context = output.source_context or {}
     tab_map = {
+        "artefact_analysis": "Analyze",
         "tailoring_guidance": "Tailor",
         "draft": "Draft",
         "artefact_suggestion": "Compare",
@@ -1312,7 +1354,7 @@ def _artefact_local_ai_workspace(job: Job, output: AiOutput | None, artefact_loo
             artefact_name = matching.filename
     tabs = "".join(
         f'<div class="workspace-local-ai-tab{" active" if label == active_tab else ""}">{escape(label)}</div>'
-        for label in ("Tailor", "Improve", "Draft", "Compare", "Score")
+        for label in ("Analyze", "Tailor", "Improve", "Draft", "Compare", "Score")
     )
     actions = []
     if output.output_type == "draft":
@@ -1330,6 +1372,8 @@ def _artefact_local_ai_workspace(job: Job, output: AiOutput | None, artefact_loo
     links = ""
     if output.output_type == "draft":
         links = _draft_links(output, artefact_lookup)
+    elif output.output_type == "artefact_analysis":
+        links = _artefact_analysis_links(output, artefact_lookup)
     elif output.output_type == "tailoring_guidance":
         links = _tailoring_guidance_links(output, artefact_lookup)
     elif output.output_type == "artefact_suggestion":
@@ -1389,6 +1433,9 @@ def _workspace_artefact_item(job: Job, artefact: Artefact) -> str:
           <div class="workspace-ai-menu-body">
             <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/tailoring-guidance">
               <button class="outline" type="submit">Tailor</button>
+            </form>
+            <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/analysis">
+              <button class="outline" type="submit">Analyze</button>
             </form>
             <form class="inline-action-form" method="post" action="/jobs/{escape(job.uuid, quote=True)}/artefacts/{escape(artefact.uuid, quote=True)}/drafts">
               <input type="hidden" name="draft_kind" value="resume_draft">
@@ -2952,7 +2999,7 @@ def render_job_detail(
     body = f"""
     {(_flash_message(ai_status, tone="success") if ai_status else "")}
     {(_flash_message(ai_error, tone="error") if ai_error else "")}
-    <div class="workspace-grid v2" data-ui="job-workspace" data-ui-active-section="{escape(active_section, quote=True)}">
+    <div class="workspace-grid" data-ui="job-workspace" data-ui-active-section="{escape(active_section, quote=True)}">
       <aside class="workspace-left-rail" data-ui-component="left-rail">
         {_workspace_back_link_card()}
         {_workspace_anchor_nav(job, artefacts, events, active_section)}
@@ -3507,6 +3554,39 @@ def create_job_artefact_tailoring_guidance_route(
     db.commit()
     return RedirectResponse(
         url=_job_detail_redirect(job.uuid, section="documents", ai_status="Tailoring guidance generated"),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/jobs/{job_uuid}/artefacts/{artefact_uuid}/analysis", include_in_schema=False)
+def create_job_artefact_analysis_route(
+    job_uuid: str,
+    artefact_uuid: str,
+    db: DbSession,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> RedirectResponse:
+    job = require_owner(get_user_job_by_uuid(db, current_user, job_uuid), current_user)
+    artefact = get_user_job_artefact_by_uuid(db, current_user, job, artefact_uuid)
+    if artefact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artefact not found")
+    try:
+        generate_job_artefact_analysis(
+            db,
+            current_user,
+            job,
+            artefact,
+            profile=get_user_profile(db, current_user),
+        )
+    except AiExecutionError as exc:
+        db.rollback()
+        return RedirectResponse(
+            url=_job_detail_redirect(job.uuid, section="documents", ai_error=str(exc)),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    db.commit()
+    return RedirectResponse(
+        url=_job_detail_redirect(job.uuid, section="documents", ai_status="Artefact analysis generated"),
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

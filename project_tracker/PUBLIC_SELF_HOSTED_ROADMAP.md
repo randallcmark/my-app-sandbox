@@ -152,6 +152,13 @@ As of 2026-04-19, the app is verified through:
   available, reducing metadata-only fallbacks for non-text baselines.
 - Artefact AI Phase D sub-slice 6 implemented: the artefact library now shows provenance for saved
   drafts, including source draft id and baseline artefact linkage when available.
+- Artefact AI Phase E sub-slice 1 implemented: artefacts now expose conservative outcome-signal
+  summaries in the service layer, including strongest signal and evidence level, so later AI
+  reasoning can use explicit prior outcome context instead of inferring from ad hoc counts.
+- Artefact AI is now being reframed around analysis-first artefact understanding and fit
+  evaluation. The next active slice is a visible `artefact_analysis` capability with job-text
+  requirement inference and qualitative fit evaluation, while the implemented outcome helpers remain
+  secondary supporting context.
 - Job Workspace reduction work is now tracked in `docs/JOB_WORKSPACE_REDUCTION_PLAN.md`. The first
   reduction slice is implemented, and the next follow-on there is pane-by-pane cleanup across
   `Application`, `Interviews`, `Follow-ups`, `Tasks`, `Notes`, and `Documents` before any later
@@ -164,8 +171,9 @@ Known next product focus:
 - Phase 4 follow-up: continue improving Job Workspace execution flows where external systems are
   involved.
 - Phase 5 follow-up: application/interview-level artefact associations, extraction, and suggestions.
-- Phase 5 / Phase 6 follow-up: continue `docs/ARTEFACT_AI_PLAN.md` from Phase E, starting with
-  conservative outcome-aware learning helpers before broader prompt/UI changes.
+- Phase 5 / Phase 6 follow-up: continue `docs/ARTEFACT_AI_PLAN.md` from Phase A, starting with
+  artefact analysis foundation and fit evaluation before deeper optimization and later
+  outcome-aware refinement.
 - Phase 6 follow-up: extend provider execution further, especially Anthropic, and later consider
   Artefact Library rendering once Job Workspace artefact suggestion is stable.
 - Phase 7: scheduler and worker support.
