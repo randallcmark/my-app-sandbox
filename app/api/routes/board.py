@@ -810,9 +810,10 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     return render_shell_page(
         user,
         page_title=workflow_label,
-        title=workflow_label,
+        title="",
         subtitle="",
         active="board",
+        show_hero=False,
         actions=(("Add job", "/jobs/new", "add-job"),),
         body=body,
         goal=f"<span>Workflow:</span> <strong>{escape(workflow_label)}</strong>",

@@ -409,10 +409,6 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
           <span class="status-pill accent">Inbox</span>
         </div>
         <div class="queue-count"><strong>{len(jobs)}</strong><span>queued</span></div>
-        <p>Review only what looks worth effort, then accept, clean up, or dismiss.</p>
-        <div class="mobile-stack">
-          <a class="secondary" href="/api/capture/bookmarklet">Capture setup</a>
-        </div>
       </section>
       <section class="page-panel emphasis">
         <div class="panel-header">
@@ -437,9 +433,10 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
         render_shell_page(
             user,
             page_title="Inbox",
-            title="Inbox",
+            title="",
             subtitle="",
             active="inbox",
+            show_hero=False,
             actions=(("Paste email", "/inbox/email/new", "paste-email"), ("Add job", "/jobs/new", "add-job")),
             body=body,
             aside=aside,
