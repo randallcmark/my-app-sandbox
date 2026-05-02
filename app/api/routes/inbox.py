@@ -233,22 +233,52 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
     cards = "\n".join(_job_card(job) for job in jobs)
     if not cards:
         cards = """
-        <section class="page-panel soft empty-state">
-          <div class="panel-header">
-            <div>
-              <p class="panel-micro">Clear queue</p>
-              <h2>Inbox is clear</h2>
-            </div>
-            <span class="status-pill success">Up to date</span>
-          </div>
-          <p>Captured and recommended jobs that need review will appear here before they move into active work.</p>
-          <div class="empty-actions">
-            <a class="button" href="/inbox/email/new">Paste email</a>
-            <a class="secondary" href="/api/capture/bookmarklet">Set up capture</a>
-          </div>
+        <section class="inbox-empty">
+          <span class="inbox-empty-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 20 20" fill="none"
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 10 8 15 17 5"/>
+            </svg>
+          </span>
+          <h2 class="inbox-empty-title">Inbox is clear</h2>
+          <p class="inbox-empty-sub">Captured jobs needing review will appear here.</p>
+          <a class="button" href="/inbox/email/new">Paste email</a>
         </section>
         """
     extra_styles = compact_content_rhythm_styles() + """
+    .inbox-empty {
+      align-items: center;
+      background: #ffffff;
+      border: var(--border-default);
+      border-radius: var(--radius-xl);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .inbox-empty-icon {
+      align-items: center;
+      background: var(--success-soft);
+      border: 0.5px solid #b6dfc5;
+      border-radius: 50%;
+      color: var(--success);
+      display: flex;
+      height: 52px;
+      justify-content: center;
+      margin-bottom: 4px;
+      width: 52px;
+    }
+    .inbox-empty-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    .inbox-empty-sub {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin: 0 0 6px;
+    }
     .inbox-list { display: grid; gap: 10px; }
     .inbox-card {
       background: #ffffff;

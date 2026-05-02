@@ -1178,6 +1178,39 @@ def render_shell_page(
       requestAnimationFrame(refreshTopbar);
     }})();
   </script>
+  <script>
+    (() => {{
+      const EDITABLE = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+      function inEditable() {{
+        const el = document.activeElement;
+        return el && (EDITABLE.has(el.tagName) || el.isContentEditable);
+      }}
+      let pending = null;
+      document.addEventListener("keydown", e => {{
+        if (e.altKey || e.ctrlKey || e.metaKey) {{
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {{
+            const form = document.activeElement && document.activeElement.closest("form");
+            if (form) {{
+              const btn = form.querySelector('button[type="submit"]');
+              if (btn) {{ btn.click(); }}
+            }}
+          }}
+          return;
+        }}
+        if (inEditable()) return;
+        const key = e.key;
+        if (pending === "g") {{
+          pending = null;
+          const map = {{ f: "/focus", i: "/inbox", b: "/board", h: "/help" }};
+          if (map[key]) {{ e.preventDefault(); location.href = map[key]; }}
+          return;
+        }}
+        if (key === "g") {{ pending = "g"; setTimeout(() => {{ pending = null; }}, 1200); return; }}
+        if (key === "n") {{ e.preventDefault(); location.href = "/jobs/new"; return; }}
+        if (key === "?") {{ e.preventDefault(); location.href = "/help"; return; }}
+      }});
+    }})();
+  </script>
   {scripts}
 </body>
 </html>"""

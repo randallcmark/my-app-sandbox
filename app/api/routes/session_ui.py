@@ -797,6 +797,38 @@ def help_page(user: User) -> HTMLResponse:
       border-left: 3px solid var(--line);
       padding-left: 8px;
     }
+    .kbd-table {
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      width: 100%;
+    }
+    .kbd-table th {
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      padding: 0 10px 6px 0;
+      text-align: left;
+      text-transform: uppercase;
+    }
+    .kbd-table td {
+      border-top: var(--border-default);
+      padding: 7px 10px 7px 0;
+      vertical-align: middle;
+    }
+    .kbd-table td:first-child { white-space: nowrap; }
+    kbd {
+      background: var(--surface-soft);
+      border: var(--border-default);
+      border-radius: 5px;
+      box-shadow: 0 1px 0 var(--line);
+      display: inline-block;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1;
+      padding: 3px 7px;
+    }
     .next-steps {
       display: grid;
       gap: 8px;
@@ -929,6 +961,27 @@ def help_page(user: User) -> HTMLResponse:
         <a href="{ANTHROPIC_API_OVERVIEW_URL}" target="_blank" rel="noreferrer">Anthropic API overview</a>
         <a href="/settings#ai">Open AI settings</a>
       </div>
+    </section>
+    <section id="keyboard-shortcuts">
+      <h2>Keyboard shortcuts</h2>
+      <p>Shortcuts are active when you are not typing in a field. Press <kbd>g</kbd> then a second key to jump to a page.</p>
+      <table class="kbd-table">
+        <thead>
+          <tr>
+            <th>Key(s)</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><kbd>g</kbd> <kbd>f</kbd></td><td>Go to Focus</td></tr>
+          <tr><td><kbd>g</kbd> <kbd>i</kbd></td><td>Go to Inbox</td></tr>
+          <tr><td><kbd>g</kbd> <kbd>b</kbd></td><td>Go to Board</td></tr>
+          <tr><td><kbd>g</kbd> <kbd>h</kbd></td><td>Go to Help</td></tr>
+          <tr><td><kbd>n</kbd></td><td>New job</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Open Help</td></tr>
+          <tr><td><kbd>Ctrl</kbd> <kbd>Enter</kbd> / <kbd>⌘</kbd> <kbd>Enter</kbd></td><td>Submit the current form</td></tr>
+        </tbody>
+      </table>
     </section>
     {admin_section}
     """
