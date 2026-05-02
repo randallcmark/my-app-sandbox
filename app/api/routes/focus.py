@@ -800,30 +800,6 @@ def render_focus(
     if ai_error:
         flashes += _flash_message(ai_error, tone="error")
 
-    # ── Stat strip ─────────────────────────────────────────────────────────
-    def _stat(icon: str, num: int, label: str, href: str, tone: str = "") -> str:
-        tone_class = f" {tone}" if tone else ""
-        return (
-            f'<a class="stat-card{tone_class}" href="{escape(href, quote=True)}">'
-            f'<span class="stat-icon">{icon}</span>'
-            f'<strong class="stat-num">{num}</strong>'
-            f'<span class="stat-label">{escape(label)}</span>'
-            f'</a>'
-        )
-
-    fu_tone  = "urgent" if due_followups else ""
-    stale_tone = "warn" if stale_jobs else ""
-    iv_tone  = "ok" if interviews else ""
-    stat_strip = f"""
-    <div class="focus-stat-strip" aria-label="Focus summary">
-      {_stat(_ICO_FOLLOWUP,  len(due_followups),         "Due follow-ups",   "#due-follow-ups",   fu_tone)}
-      {_stat(_ICO_INTERVIEW, len(interviews),             "Interviews",       "#upcoming-interviews", iv_tone)}
-      {_stat(_ICO_STALE,     len(stale_jobs),             "Stale jobs",       "#stale-active-jobs",   stale_tone)}
-      {_stat(_ICO_NACTION,   len(no_next_action_jobs),    "Need next action", "#no-next-action",  "warn" if no_next_action_jobs else "")}
-      {_stat(_ICO_ACTIVE,    active_count,                "Active jobs",      "/board?workflow=in_progress", "accent" if active_count else "")}
-    </div>
-    """
-
     # ── Section rows ────────────────────────────────────────────────────────
     followup_rows    = [_followup_item(e) for e in due_followups]
     artefact_rows    = [_artefact_item(a) for a in due_artefact_followups]
@@ -855,7 +831,7 @@ def render_focus(
     </div>
     """
 
-    body = profile_prompt + stat_strip + grid
+    body = profile_prompt + grid
 
     # ── Aside ───────────────────────────────────────────────────────────────
     def _nav_count(n: int, tone: str) -> str:
@@ -869,6 +845,7 @@ def render_focus(
         <header class="section-head">
           <span class="section-icon">{_ICO_ACTIVE}</span>
           <h2>Queue</h2>
+          {_nav_count(active_count, "neutral")}
         </header>
         <ul class="aside-nav-list">
           <li><a class="aside-nav-item" href="#due-follow-ups">
@@ -890,15 +867,6 @@ def render_focus(
             <span class="nav-icon">{_ICO_NACTION}</span>
             <span class="nav-label">Need next action</span>
             {_nav_count(len(no_next_action_jobs), "warn")}
-          </a></li>
-          <li><a class="aside-nav-item" href="/board?workflow=in_progress">
-            <span class="nav-icon">{_ICO_ACTIVE}</span>
-            <span class="nav-label">Board</span>
-            {_nav_count(active_count, "neutral")}
-          </a></li>
-          <li><a class="aside-nav-item" href="/inbox">
-            <span class="nav-icon">{_ICO_ARTEFACT}</span>
-            <span class="nav-label">Inbox</span>
           </a></li>
         </ul>
       </section>
