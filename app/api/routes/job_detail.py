@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 from html import escape
+import json
 import logging
 import re
 from typing import Annotated
@@ -3803,6 +3804,16 @@ def render_job_detail(
     )}
     """
     scripts = f"""
+  <script>
+    try {{
+      var _jt = JSON.parse(sessionStorage.getItem('at-recents') || '[]');
+      var _ju = {json.dumps(job.uuid)};
+      _jt = _jt.filter(function(j) {{ return j.u !== _ju; }});
+      _jt.unshift({{ u: _ju, t: {json.dumps(job.title)}, h: {json.dumps('/jobs/' + job.uuid)} }});
+      if (_jt.length > 5) _jt.length = 5;
+      sessionStorage.setItem('at-recents', JSON.stringify(_jt));
+    }} catch(e) {{}}
+  </script>
   <script>
     (() => {{
       const jobUuid = "{escape(job.uuid, quote=True)}";

@@ -50,6 +50,7 @@ _ICO_EXTERNAL   = _icon('<path d="M9 3H4a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 00
 _ICO_SETTINGS   = _icon('<circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4"/>')
 _ICO_CHEVRON    = _icon('<polyline points="5 8 10 13 15 8"/>', w=12, h=12)
 _ICO_CHECK      = _icon('<polyline points="3 10 8 15 17 5"/>')
+_ICO_HISTORY    = _icon('<path d="M2 10a8 8 0 108-8"/><polyline points="2 2 2 10 10 10"/>')
 
 
 # ── Data helpers ─────────────────────────────────────────────────────────────
@@ -737,7 +738,55 @@ _FOCUS_STYLES = """
     .focus-row .row-meta,
     .focus-row .row-subject { display: none; }
   }
+
+  /* ── Recently viewed sidebar panel ──────── */
+  #at-recents-panel .nav-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 """
+
+
+# ── Recently viewed JS helper ─────────────────────────────────────────────────
+
+def _recents_focus_js() -> str:
+    ico = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 20 20"'
+        ' fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"'
+        ' stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M2 10a8 8 0 108-8"/>'
+        '<polyline points="2 2 2 10 10 10"/>'
+        '</svg>'
+    )
+    return f"""<script>
+  (() => {{
+    try {{
+      var items = JSON.parse(sessionStorage.getItem('at-recents') || '[]');
+      var panel = document.getElementById('at-recents-panel');
+      if (!panel || !items.length) return;
+      var list = panel.querySelector('.recents-list');
+      if (!list) return;
+      items.forEach(function(job) {{
+        var li = document.createElement('li');
+        var a = document.createElement('a');
+        a.className = 'aside-nav-item';
+        a.href = job.h;
+        var icon = document.createElement('span');
+        icon.className = 'nav-icon';
+        icon.innerHTML = `{ico}`;
+        var label = document.createElement('span');
+        label.className = 'nav-label';
+        label.textContent = job.t;
+        a.appendChild(icon);
+        a.appendChild(label);
+        li.appendChild(a);
+        list.appendChild(li);
+      }});
+      panel.style.display = '';
+    }} catch(e) {{}}
+  }})();
+</script>"""
 
 
 # ── Main render ───────────────────────────────────────────────────────────────
@@ -871,6 +920,13 @@ def render_focus(
         </ul>
       </section>
       {_focus_ai_panel(ai_target_job, ai_output)}
+      <section class="aside-panel" id="at-recents-panel" style="display:none">
+        <header class="section-head">
+          <span class="section-icon">{_ICO_HISTORY}</span>
+          <h2>Recently viewed</h2>
+        </header>
+        <ul class="aside-nav-list recents-list"></ul>
+      </section>
     </div>
     """
 
@@ -887,6 +943,7 @@ def render_focus(
             goal=goal,
             container="split",
             extra_styles=_FOCUS_STYLES,
+            scripts=_recents_focus_js(),
             show_hero=False,
         )
     )
