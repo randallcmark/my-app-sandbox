@@ -2323,7 +2323,7 @@ def _next_board_position(db: DbSession, user: User, job_status: str) -> int:
 
 def render_new_job(user: User) -> str:
     extra_styles = """
-    h1 { font-size: 2rem; line-height: 1.1; }
+    h1 { font-size: 1.6rem; font-weight: 500; line-height: 1.15; }
     .job-entry-panel {
       max-height: 100%;
       min-height: 0;
@@ -2346,14 +2346,15 @@ def render_new_job(user: User) -> str:
     textarea { resize: vertical; }
     button {
       background: var(--accent);
-      border: 0;
+      border: 0.5px solid var(--accent-strong);
       border-radius: 10px;
       color: #ffffff;
       cursor: pointer;
       font: inherit;
       font-weight: 500;
-      min-height: 38px;
+      min-height: 34px;
       padding: 0 14px;
+      transition: background 120ms ease-out;
     }
     button:hover { background: var(--accent-strong); }
     @media (max-width: 720px) {
@@ -2452,14 +2453,15 @@ def render_job_detail(
     .stage-pill {{
       border-radius: 999px;
       display: inline-flex;
-      font-size: 0.82rem;
+      font-size: 0.73rem;
+      font-weight: 500;
       line-height: 1;
-      padding: 6px 10px;
+      padding: 4px 8px;
     }}
-    .stage-pill.inbox {{ background: #e8ebf8; color: #2d3a9a; }}
-    .stage-pill.active {{ background: #fdf3e6; color: #8c4a00; }}
-    .stage-pill.success {{ background: #eaf4ee; color: #1a5c38; }}
-    .stage-pill.closed {{ background: #f1f0ed; color: #5f5e5a; }}
+    .stage-pill.inbox {{ background: var(--accent-soft); border: 0.5px solid #C3CCF0; color: var(--accent-strong); }}
+    .stage-pill.active {{ background: var(--amber-soft); border: 0.5px solid #f9d9a0; color: #8c5000; }}
+    .stage-pill.success {{ background: var(--success-soft); border: 0.5px solid #b6dfc5; color: var(--success); }}
+    .stage-pill.closed {{ background: #f1f0ed; border: 0.5px solid #d8d8d4; color: #5f5e5a; }}
     .workspace-grid {{
       display: grid;
       gap: 18px;
@@ -2496,12 +2498,12 @@ def render_job_detail(
       overflow-wrap: anywhere;
     }}
     .flash-success {{
-      background: linear-gradient(180deg, rgba(234,244,238,0.98), rgba(244,249,246,0.98));
-      border-color: rgba(59,167,134,0.28);
+      background: var(--success-soft);
+      border-color: #b6dfc5;
     }}
     .flash-error {{
-      background: linear-gradient(180deg, rgba(253,239,237,0.98), rgba(255,246,244,0.98));
-      border-color: rgba(226,91,76,0.28);
+      background: var(--danger-soft);
+      border-color: #f8c4be;
     }}
     .workspace-side-card {{ padding: 16px; }}
     .workspace-quick-actions {{
@@ -2565,34 +2567,38 @@ def render_job_detail(
     .workspace-nav-link,
     .workspace-quick-link {{
       align-items: center;
-      border-radius: 10px;
-      color: var(--text-muted);
+      border-radius: 8px;
+      color: var(--muted);
       display: flex;
+      font-size: 0.88rem;
       justify-content: space-between;
-      min-height: 38px;
-      padding: 0 12px;
+      min-height: 34px;
+      padding: 0 10px;
       text-decoration: none;
     }}
     .workspace-quick-link {{
-      background: rgba(112, 87, 232, 0.03);
-      border: 1px solid rgba(112, 87, 232, 0.08);
+      background: rgba(79, 103, 228, 0.03);
+      border: 0.5px solid rgba(79, 103, 228, 0.10);
     }}
     .workspace-nav-link.active {{
-      background: rgba(112, 87, 232, 0.08);
-      border: 1px solid rgba(112, 87, 232, 0.22);
+      background: var(--accent-soft);
+      border: 0.5px solid #C3CCF0;
       color: var(--accent-strong);
+      font-weight: 500;
     }}
     .workspace-nav-count {{
       align-items: center;
-      background: rgba(112, 87, 232, 0.1);
+      background: var(--accent-soft);
+      border: 0.5px solid #C3CCF0;
       border-radius: 999px;
-      color: var(--accent);
+      color: var(--accent-strong);
       display: inline-flex;
-      font-size: 0.75rem;
-      height: 22px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      height: 18px;
       justify-content: center;
-      min-width: 22px;
-      padding: 0 6px;
+      min-width: 18px;
+      padding: 0 5px;
     }}
     .workspace-side-heading {{ font-size: 0.92rem; font-weight: 500; margin-bottom: 10px; }}
     .workspace-score-card {{
@@ -2818,14 +2824,15 @@ def render_job_detail(
     .workspace-chip-row, .artefact-actions {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }}
     .workspace-chip {{
       align-items: center;
-      background: rgba(112, 87, 232, 0.08);
-      border-radius: 10px;
-      color: var(--accent);
+      background: var(--accent-soft);
+      border: 0.5px solid #C3CCF0;
+      border-radius: 8px;
+      color: var(--accent-strong);
       display: inline-flex;
-      font-size: 0.78rem;
-      font-weight: 700;
-      min-height: 28px;
-      padding: 0 10px;
+      font-size: 0.76rem;
+      font-weight: 500;
+      min-height: 24px;
+      padding: 0 8px;
     }}
     .workspace-add-chip {{
       align-items: center;
@@ -2864,19 +2871,21 @@ def render_job_detail(
       gap: 10px;
     }}
     button.compact {{
-      min-height: 34px;
-      padding: 0 12px;
+      min-height: 28px;
+      padding: 0 10px;
+      font-size: 0.85rem;
     }}
     .workspace-ai-pill {{
       align-items: center;
-      background: rgba(112, 87, 232, 0.1);
+      background: var(--accent-soft);
+      border: 0.5px solid #C3CCF0;
       border-radius: 999px;
-      color: var(--accent);
+      color: var(--accent-strong);
       display: inline-flex;
-      font-size: 0.75rem;
-      font-weight: 800;
-      min-height: 24px;
-      padding: 0 8px;
+      font-size: 0.73rem;
+      font-weight: 500;
+      min-height: 22px;
+      padding: 0 7px;
     }}
     .overview-grid {{
       display: grid;
@@ -2928,22 +2937,24 @@ def render_job_detail(
     .description-editor {{ min-height: 420px; }}
     .savebar {{
       align-items: center;
-      background: rgba(31, 52, 71, 0.96);
+      background: rgba(22, 30, 50, 0.94);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-lg);
       bottom: 18px;
       color: #ffffff;
       display: none;
-      gap: 12px;
+      gap: 10px;
       left: 50%;
-      padding: 10px 12px;
+      padding: 8px 12px;
       position: fixed;
       transform: translateX(-50%);
       z-index: 20;
     }}
     .savebar.is-visible {{ display: flex; }}
-    .savebar p {{ font-weight: 500; }}
-    .savebar .secondary {{ background: transparent; border: 1px solid rgba(255,255,255,0.45); }}
+    .savebar p {{ font-size: 0.9rem; font-weight: 500; }}
+    .savebar button {{ background: rgba(255,255,255,0.15); border: 0.5px solid rgba(255,255,255,0.30); }}
+    .savebar button:hover {{ background: rgba(255,255,255,0.25); }}
+    .savebar .secondary {{ background: transparent; border: 0.5px solid rgba(255,255,255,0.22); }}
     .readiness-list {{ display: grid; gap: 0; }}
     .readiness-item {{
       border-left: 0;

@@ -10,7 +10,7 @@ A self-hosted, goal-aware job-search workspace for capturing roles, managing app
 - **Server**: Uvicorn (dev) / Gunicorn (prod)
 - **Auth**: Local session-based auth with argon2 password hashing
 - **Storage**: Local file storage for artefacts (`./data/artefacts`)
-- **Template rendering**: Server-side HTML via Jinja2-style templates in routes
+- **Template rendering**: Server-side HTML via Python string concatenation in routes (no template engine)
 
 ## Project Structure
 
@@ -28,6 +28,31 @@ tests/            - pytest test suite
 extensions/       - Firefox browser extension for job capture
 docs/             - Product docs, UI handoff, API docs
 ```
+
+## Design System
+
+All styles are inline CSS in Python strings — no separate CSS files.
+
+- **Entry point**: `shell_token_styles()` in `app/api/routes/ui.py` — loaded on every page
+- **Design language**: "calm precision" — 400/500 weights only, 0.5px borders, no heavy shadows
+- **Color tokens**: Slate Blue `#4F67E4` (accent), Sage Green `#2A8A58` (success), Amber `#E8A020`, Coral `#D64535` (danger)
+- **Borders**: `var(--border-default)` = `0.5px solid rgba(0,0,0,0.10)` throughout
+- **Radius**: `--radius-md: 10px`, `--radius-xl: 16px`, `--radius-2xl: 18px`
+- **Buttons**: `padding: 6px 14px`, weight 500, solid accent bg, hover darkens, no gradient
+- **Inputs**: `height: 36px`, 0.5px border, `--radius-md`
+- **Typography**: h1 weight 500 at `clamp(1.65rem, 2.6vw, 2.1rem)`, h2/h3 weight 500
+- **Status pills**: `padding: 3px 8px`, weight 500, 0.5px border, contextual color variants
+- **Cards/panels**: `border: var(--border-default)`, no box-shadow (or `--shadow-sm` only)
+
+### Per-surface CSS locations
+
+| Surface | File | CSS location |
+|---------|------|------|
+| Shell/global | `app/api/routes/ui.py` | `shell_token_styles()` |
+| Job workspace | `app/api/routes/job_detail.py` | `render_job_detail()` extra_styles (~line 2409) |
+| Board/kanban | `app/api/routes/board.py` | `render_refined_board()` extra_styles |
+| Focus | `app/api/routes/focus.py` | `render_focus()` extra_styles |
+| Inbox | `app/api/routes/inbox.py` | `render_inbox()` extra_styles |
 
 ## Key Environment Variables
 
@@ -60,6 +85,8 @@ Migrations run automatically via Alembic:
 python -m alembic upgrade head
 ```
 
+13 migrations applied. Schema includes: users, jobs, communications, artefacts, interview_events, ai_outputs, user_profiles, competencies, competency_evidence.
+
 ## First Admin User
 
 Visit `/setup` in the browser to create the first admin user (only available while no users exist).
@@ -76,4 +103,7 @@ on port 5000.
 
 - Uses Replit-managed PostgreSQL (not SQLite as documented in original README)
 - `psycopg2-binary` added as a dependency for PostgreSQL support
-- The app's SQLite documentation applies to Docker/local deployments; Replit uses the managed PostgreSQL
+- All CSS is embedded in Python strings via `extra_styles` passed to `render_shell_page()`
+- Board uses discrete `.refined-action` buttons with positive/negative/quiet intent classes
+- Inbox cards use a footer row with `.inbox-act` compact action buttons (accept/review/dismiss)
+- Job workspace uses a 3-column grid: left rail (nav), center (workbench), right rail (AI sidebar)

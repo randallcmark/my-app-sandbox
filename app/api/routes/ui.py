@@ -800,17 +800,21 @@ def shell_token_styles() -> str:
 
     .auth-panel {
       background: rgba(255,255,255,0.94);
-      border: 1px solid var(--line-soft);
-      border-radius: var(--radius-2xl);
-      box-shadow: var(--shadow-lg);
+      border: var(--border-default);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
       display: grid;
-      gap: 18px;
-      padding: 24px;
+      gap: 16px;
+      padding: 22px 24px;
+    }
+
+    .auth-panel button {
+      width: 100%;
     }
 
     .error {
-      color: #bb4538;
-      font-weight: 700;
+      color: var(--danger);
+      font-weight: 500;
       margin: 0;
     }
 
