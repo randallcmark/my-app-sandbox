@@ -179,10 +179,10 @@ def _job_card(job: Job) -> str:
     )
     return f"""
     <article class="inbox-card">
-      <div class="inbox-card-main">
+      <div class="inbox-card-body">
         <div class="inbox-card-title">
           <h2><a href="/jobs/{escape(job.uuid, quote=True)}">{escape(job.title)}</a></h2>
-          <span class="status-pill accent">Needs review</span>
+          {attention}
         </div>
         <div class="inbox-card-meta">
           <span>{escape(job.company or "Company not set")}</span>
@@ -191,19 +191,18 @@ def _job_card(job: Job) -> str:
           <span>{escape(confidence)} confidence</span>
           <span>Captured {escape(captured)}</span>
         </div>
-        <div class="inbox-card-summary">
-          {_source_action(job)}
-          {attention}
-        </div>
       </div>
-      <div class="inbox-card-actions">
-        <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/accept">
-          <button type="submit">Accept</button>
-        </form>
-        <a class="secondary" href="/inbox/{escape(job.uuid, quote=True)}/review">Review</a>
-        <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/dismiss">
-          <button class="ghost" type="submit">Dismiss</button>
-        </form>
+      <div class="inbox-card-foot">
+        <div class="inbox-card-actions">
+          <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/accept">
+            <button class="inbox-act accept" type="submit">Accept</button>
+          </form>
+          <a class="inbox-act review" href="/inbox/{escape(job.uuid, quote=True)}/review">Review</a>
+          <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/dismiss">
+            <button class="inbox-act dismiss" type="submit">Dismiss</button>
+          </form>
+        </div>
+        {_source_action(job)}
       </div>
     </article>
     """

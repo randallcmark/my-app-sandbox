@@ -32,17 +32,30 @@ def shell_token_styles() -> str:
       --soft-text: #7e90a5;
       --line: #d7dee8;
       --line-soft: #e7edf3;
-      --accent: #1e73d9;
-      --accent-strong: #105ec0;
-      --accent-soft: #edf5ff;
-      --danger: #e25b4c;
-      --danger-soft: rgba(226, 91, 76, 0.12);
-      --amber: #e39b3d;
-      --amber-soft: rgba(227, 155, 61, 0.14);
-      --success: #3ba786;
-      --success-soft: rgba(59, 167, 134, 0.14);
-      --ai-bg: #e8efff;
-      --ai-line: #c6d6f4;
+      --accent: #4F67E4;
+      --accent-strong: #2D3A9A;
+      --accent-soft: #E8EBF8;
+      --danger: #D64535;
+      --danger-soft: #FDEFED;
+      --amber: #E8A020;
+      --amber-soft: #FDF3E6;
+      --success: #2A8A58;
+      --success-soft: #EAF4EE;
+      --ai-bg: #E8EBF8;
+      --ai-line: #C3CCF0;
+      --border-width: 0.5px;
+      --border-default: 0.5px solid rgba(0,0,0,0.10);
+      --border-hover: 0.5px solid rgba(0,0,0,0.22);
+      --transition-fast: 120ms ease-out;
+      --transition-base: 200ms ease-out;
+      --transition-slow: 350ms ease-out;
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --space-2xl: 32px;
+      --space-3xl: 48px;
       --shadow-xl: 0 28px 70px rgba(16, 34, 52, 0.20);
       --shadow-lg: 0 16px 40px rgba(16, 34, 52, 0.12);
       --shadow-md: 0 10px 24px rgba(16, 34, 52, 0.10);
@@ -51,7 +64,7 @@ def shell_token_styles() -> str:
       --radius-2xl: 18px;
       --radius-xl: 16px;
       --radius-lg: 14px;
-      --radius-md: 12px;
+      --radius-md: 10px;
       --radius-sm: 8px;
       --topbar-h: 78px;
       --content-gap: 22px;
@@ -124,7 +137,7 @@ def shell_token_styles() -> str:
     .app-topbar {
       align-items: center;
       background: rgba(255,255,255,0.78);
-      border-bottom: 1px solid var(--line);
+      border-bottom: var(--border-default);
       display: flex;
       gap: 16px;
       min-height: var(--topbar-h);
@@ -295,21 +308,27 @@ def shell_token_styles() -> str:
       border-radius: var(--radius-md);
       display: inline-flex;
       font: inherit;
-      font-weight: 700;
+      font-weight: 500;
       justify-content: center;
-      min-height: 40px;
-      padding: 0 16px;
+      padding: 6px 14px;
       white-space: nowrap;
     }
 
     .button,
     .btn,
     button {
-      background: linear-gradient(180deg, #2a81e7, var(--accent));
-      border: 1px solid #1b6fce;
-      box-shadow: var(--shadow-sm);
+      background: var(--accent);
+      border: 0.5px solid var(--accent-strong);
+      box-shadow: none;
       color: #ffffff;
       cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .button:hover,
+    .btn:hover,
+    button:hover:not(:disabled) {
+      background: var(--accent-strong);
     }
 
     .button.secondary,
@@ -317,24 +336,23 @@ def shell_token_styles() -> str:
     .secondary,
     button.secondary {
       background: rgba(255,255,255,0.78);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow-sm);
+      border: var(--border-default);
+      box-shadow: none;
       color: var(--ink);
     }
 
     .ghost,
     button.ghost {
       background: transparent;
-      border: 1px solid var(--line);
+      border: var(--border-default);
       color: var(--danger);
     }
 
     .icon-btn {
       background: rgba(255,255,255,0.78);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow-sm);
+      border: var(--border-default);
       color: var(--soft-text);
-      min-width: 40px;
+      min-width: 34px;
       padding: 0;
       position: relative;
     }
@@ -364,8 +382,7 @@ def shell_token_styles() -> str:
 
     .user-menu > summary {
       background: rgba(255,255,255,0.78);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow-sm);
+      border: var(--border-default);
       color: var(--ink);
       cursor: pointer;
       gap: 10px;
@@ -390,12 +407,12 @@ def shell_token_styles() -> str:
     .avatar-mark {
       align-items: center;
       background: linear-gradient(180deg, #f0f3f8, #dfe7ef);
-      border: 1px solid var(--line);
+      border: var(--border-default);
       border-radius: 999px;
       color: var(--ink);
       display: inline-flex;
       font-size: 0.8rem;
-      font-weight: 800;
+      font-weight: 500;
       height: 28px;
       justify-content: center;
       width: 28px;
@@ -403,7 +420,7 @@ def shell_token_styles() -> str:
 
     .user-menu-panel {
       background: rgba(255,255,255,0.96);
-      border: 1px solid var(--line);
+      border: var(--border-default);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-lg);
       display: grid;
@@ -419,10 +436,12 @@ def shell_token_styles() -> str:
 
     .user-menu-head {
       color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 600;
+      font-size: 0.78rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
       margin: 0;
       padding: 6px 8px 8px;
+      text-transform: uppercase;
     }
 
     .user-menu-panel a,
@@ -515,17 +534,17 @@ def shell_token_styles() -> str:
 
     .page-kicker {
       color: var(--soft-text);
-      font-size: 0.84rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
+      font-size: 0.78rem;
+      font-weight: 400;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
 
     .page-hero h1 {
-      font-size: clamp(1.95rem, 3vw, 2.55rem);
-      font-weight: 800;
+      font-size: clamp(1.65rem, 2.6vw, 2.1rem);
+      font-weight: 500;
       letter-spacing: -0.02em;
-      line-height: 1.05;
+      line-height: 1.1;
       margin: 0;
       overflow-wrap: anywhere;
     }
@@ -540,9 +559,9 @@ def shell_token_styles() -> str:
 
     .page-panel {
       background: var(--panel);
-      border: 1px solid var(--line-soft);
+      border: var(--border-default);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-sm);
       display: grid;
       gap: 12px;
       overflow: hidden;
@@ -579,9 +598,9 @@ def shell_token_styles() -> str:
     }
 
     .panel-title {
-      font-size: 1.08rem;
-      font-weight: 800;
-      line-height: 1.2;
+      font-size: 1rem;
+      font-weight: 500;
+      line-height: 1.25;
       margin: 0;
     }
 
@@ -595,22 +614,23 @@ def shell_token_styles() -> str:
 
     .panel-micro {
       color: var(--soft-text);
-      font-size: 0.84rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
+      font-size: 0.76rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
 
     h2 {
-      font-size: 1.12rem;
-      font-weight: 800;
+      font-size: 1.05rem;
+      font-weight: 500;
       letter-spacing: -0.01em;
-      line-height: 1.2;
+      line-height: 1.3;
       margin: 0;
     }
 
     h3 {
-      font-size: 0.98rem;
-      font-weight: 800;
+      font-size: 0.9rem;
+      font-weight: 500;
       margin: 0;
     }
 
@@ -621,25 +641,28 @@ def shell_token_styles() -> str:
 
     label {
       display: grid;
-      font-weight: 700;
-      gap: 6px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      gap: 5px;
     }
 
     input,
     select,
     textarea {
       background: rgba(255,255,255,0.92);
-      border: 1px solid var(--line);
+      border: var(--border-default);
       border-radius: var(--radius-md);
       color: var(--ink);
       font: inherit;
-      min-height: 40px;
-      padding: 10px 12px;
+      height: 36px;
+      padding: 0 12px;
       width: 100%;
     }
 
     textarea {
-      min-height: 120px;
+      height: auto;
+      min-height: 100px;
+      padding: 8px 12px;
       resize: vertical;
     }
 
@@ -649,17 +672,17 @@ def shell_token_styles() -> str:
     }
 
     th, td {
-      border-bottom: 1px solid var(--line-soft);
-      padding: 12px 10px;
+      border-bottom: var(--border-default);
+      padding: 10px;
       text-align: left;
       vertical-align: middle;
     }
 
     th {
       color: var(--soft-text);
-      font-size: 0.78rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
+      font-size: 0.76rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
     }
 
@@ -671,17 +694,17 @@ def shell_token_styles() -> str:
 
     .metric-card {
       background: rgba(255,255,255,0.86);
-      border: 1px solid var(--line-soft);
+      border: var(--border-default);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-sm);
+      box-shadow: none;
       display: grid;
-      gap: 6px;
-      padding: 16px;
+      gap: 5px;
+      padding: 14px 16px;
     }
 
     .metric-card strong {
-      font-size: 1.65rem;
-      font-weight: 800;
+      font-size: 1.5rem;
+      font-weight: 500;
       letter-spacing: -0.02em;
     }
 
@@ -695,43 +718,42 @@ def shell_token_styles() -> str:
     .pill {
       align-items: center;
       background: var(--surface-muted);
-      border: 1px solid var(--line);
+      border: var(--border-default);
       border-radius: 999px;
       color: var(--muted);
       display: inline-flex;
-      font-size: 0.76rem;
-      font-weight: 800;
-      min-height: 28px;
-      padding: 0 10px;
+      font-size: 0.73rem;
+      font-weight: 500;
+      padding: 3px 8px;
       white-space: nowrap;
     }
 
     .status-pill.accent,
     .pill.accent {
       background: var(--accent-soft);
-      border-color: #c9daf3;
+      border-color: #C3CCF0;
       color: var(--accent-strong);
     }
 
     .status-pill.success,
     .pill.success {
       background: var(--success-soft);
-      border-color: rgba(59,167,134,0.28);
-      color: #257a61;
+      border-color: #b6dfc5;
+      color: var(--success);
     }
 
     .status-pill.warn,
     .pill.warn {
       background: var(--amber-soft);
-      border-color: rgba(227,155,61,0.32);
-      color: #b06c18;
+      border-color: #f9d9a0;
+      color: #8c5000;
     }
 
     .status-pill.danger,
     .pill.danger {
       background: var(--danger-soft);
-      border-color: rgba(226,91,76,0.32);
-      color: #c94d3e;
+      border-color: #f8c4be;
+      color: var(--danger);
     }
 
     .card-list {
@@ -740,14 +762,14 @@ def shell_token_styles() -> str:
     }
 
     .elevated-card {
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
-      border: 1px solid var(--line-soft);
+      background: #ffffff;
+      border: var(--border-default);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
+      box-shadow: none;
       display: grid;
       gap: 14px;
       overflow: hidden;
-      padding: 18px;
+      padding: 16px 18px;
     }
 
     .card-header {
