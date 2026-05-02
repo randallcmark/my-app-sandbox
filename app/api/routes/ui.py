@@ -183,22 +183,22 @@ def shell_token_styles() -> str:
     }
 
     .app-nav a {
+      align-items: center;
       border-radius: 10px;
       color: var(--muted);
       display: inline-flex;
       flex: 0 0 auto;
-      font-size: 0.98rem;
-      font-weight: 600;
-      min-height: 42px;
-      padding: 0 12px;
+      font-size: 0.9rem;
+      font-weight: 400;
+      min-height: 38px;
+      padding: 0 10px;
       position: relative;
       white-space: nowrap;
-      align-items: center;
     }
 
     .app-nav a.active {
       color: var(--ink);
-      font-weight: 800;
+      font-weight: 500;
     }
 
     .app-nav a.active::after {
@@ -206,10 +206,10 @@ def shell_token_styles() -> str:
       border-radius: 999px;
       bottom: -15px;
       content: "";
-      height: 3px;
-      left: 12px;
+      height: 2px;
+      left: 10px;
       position: absolute;
-      right: 12px;
+      right: 10px;
     }
 
     .header-context {
@@ -223,23 +223,22 @@ def shell_token_styles() -> str:
     .header-context-chip {
       align-items: center;
       background: rgba(255,255,255,0.78);
-      border: 1px solid var(--line);
+      border: var(--border-default);
       border-radius: 999px;
       color: var(--muted);
       display: inline-flex;
       gap: 8px;
       justify-self: end;
       max-width: 100%;
-      min-height: 40px;
+      min-height: 32px;
       min-width: 0;
       overflow: hidden;
-      padding: 0 14px;
-      box-shadow: var(--shadow-sm);
+      padding: 0 12px;
     }
 
     .header-context-chip strong {
       color: var(--ink);
-      font-weight: 800;
+      font-weight: 500;
     }
 
     .header-context-chip span,

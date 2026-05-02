@@ -2411,20 +2411,21 @@ def render_job_detail(
     h1, h2, h3, p {{ margin: 0; }}
     a {{ color: var(--accent-strong); font-weight: 500; }}
     button {{
-      background: linear-gradient(180deg, #7a66ef, var(--accent));
-      border: 0;
+      background: var(--accent);
+      border: 0.5px solid var(--accent-strong);
       border-radius: 10px;
       color: #ffffff;
       cursor: pointer;
       font: inherit;
-      font-weight: 600;
-      min-height: 38px;
+      font-weight: 500;
+      min-height: 34px;
       padding: 0 14px;
+      transition: background 120ms ease-out;
     }}
-    button:hover {{ background: var(--accent-strong); }}
+    button:hover:not(:disabled) {{ background: var(--accent-strong); }}
     button.outline, .button-link {{
       background: #ffffff;
-      border: 0.5px solid var(--line);
+      border: 0.5px solid rgba(0,0,0,0.10);
       color: var(--ink);
       text-decoration: none;
     }}
@@ -2481,10 +2482,10 @@ def render_job_detail(
     .workspace-next-up,
     .workspace-subpanel,
     .workspace-panel {{
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
-      border: 1px solid var(--line-soft);
+      background: #ffffff;
+      border: 0.5px solid rgba(0,0,0,0.09);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
+      box-shadow: none;
     }}
     .flash {{ margin-bottom: 18px; padding: 18px 20px; }}
     .flash-detail {{
@@ -2508,17 +2509,16 @@ def render_job_detail(
     }}
     .workspace-quick-trigger {{
       align-items: center;
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
-      border: 1px solid var(--line-soft);
+      background: #ffffff;
+      border: 0.5px solid rgba(0,0,0,0.09);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
       color: var(--ink);
       cursor: pointer;
       display: flex;
-      font-weight: 800;
+      font-weight: 500;
       justify-content: space-between;
       list-style: none;
-      min-height: 46px;
+      min-height: 40px;
       padding: 0 16px;
     }}
     .workspace-quick-trigger::-webkit-details-marker {{ display: none; }}
@@ -2527,10 +2527,10 @@ def render_job_detail(
       border-bottom-right-radius: 12px;
     }}
     .workspace-quick-panel {{
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.99));
-      border: 1px solid var(--line-soft);
+      background: #ffffff;
+      border: 0.5px solid rgba(0,0,0,0.09);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-lg);
+      box-shadow: var(--shadow-md);
       display: grid;
       gap: 10px;
       left: 0;
@@ -2551,12 +2551,13 @@ def render_job_detail(
       align-items: center;
       color: var(--muted);
       display: inline-flex;
-      font-size: 0.92rem;
-      font-weight: 700;
-      gap: 8px;
-      min-height: 28px;
+      font-size: 0.85rem;
+      font-weight: 400;
+      gap: 6px;
+      min-height: 26px;
       text-decoration: none;
     }}
+    .workspace-back-link:hover {{ color: var(--ink); }}
     .workspace-anchor-nav {{
       display: grid;
       gap: 4px;
@@ -2593,7 +2594,7 @@ def render_job_detail(
       min-width: 22px;
       padding: 0 6px;
     }}
-    .workspace-side-heading {{ font-size: 0.98rem; font-weight: 800; margin-bottom: 12px; }}
+    .workspace-side-heading {{ font-size: 0.92rem; font-weight: 500; margin-bottom: 10px; }}
     .workspace-score-card {{
       align-items: center;
       display: grid;
@@ -2618,8 +2619,8 @@ def render_job_detail(
       position: absolute;
     }}
     .workspace-score-ring span {{
-      font-size: 1.35rem;
-      font-weight: 800;
+      font-size: 1.2rem;
+      font-weight: 500;
       position: relative;
       z-index: 1;
     }}
@@ -2645,10 +2646,11 @@ def render_job_detail(
       text-decoration: none;
     }}
     .button-link.primary {{
-      background: linear-gradient(180deg, #7a66ef, var(--accent));
-      border-color: #6c59dd;
+      background: var(--accent);
+      border: 0.5px solid var(--accent-strong);
       color: #ffffff;
     }}
+    .button-link.primary:hover {{ background: var(--accent-strong); }}
     .workspace-surface {{
       display: grid;
       gap: 16px;
@@ -2672,8 +2674,9 @@ def render_job_detail(
       justify-content: space-between;
     }}
     .workspace-identity-title {{
-      font-size: 1.45rem;
-      line-height: 1.08;
+      font-size: 1.25rem;
+      font-weight: 500;
+      line-height: 1.15;
       margin: 0 0 6px;
       overflow-wrap: anywhere;
     }}
@@ -2756,7 +2759,7 @@ def render_job_detail(
     .workspace-next-left,
     .workspace-next-right {{ padding: 20px; }}
     .workspace-next-left {{ border-right: 1px solid rgba(112, 87, 232, 0.14); }}
-    .workspace-next-title {{ font-size: 1.1rem; font-weight: 800; margin-bottom: 6px; }}
+    .workspace-next-title {{ font-size: 1rem; font-weight: 500; margin-bottom: 6px; }}
     .workspace-checklist {{ display: grid; gap: 10px; margin-top: 14px; }}
     .workspace-check {{
       align-items: start;
@@ -3010,12 +3013,12 @@ def render_job_detail(
     .workspace-rail-shell {{ overflow: hidden; padding: 0; }}
     .workspace-rail-head {{
       align-items: center;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 0.5px solid rgba(0,0,0,0.09);
       display: flex;
       gap: 12px;
       justify-content: space-between;
-      padding: 16px 18px;
-      font-weight: 800;
+      padding: 14px 16px;
+      font-weight: 500;
     }}
     .workspace-rail-body {{ display: grid; gap: 12px; padding: 12px; }}
     .workspace-rail-panel {{ display: grid; gap: 12px; padding: 16px; }}
@@ -3096,7 +3099,7 @@ def render_job_detail(
       justify-content: center;
       width: 32px;
     }}
-    .workspace-artefact-name {{ font-size: 0.95rem; font-weight: 800; margin-bottom: 3px; overflow-wrap: anywhere; }}
+    .workspace-artefact-name {{ font-size: 0.9rem; font-weight: 500; margin-bottom: 3px; overflow-wrap: anywhere; }}
     @media (min-width: 761px) {{
       .workspace-artefact-name {{
         overflow: hidden;
@@ -3134,20 +3137,21 @@ def render_job_detail(
     .action-btn {{
       align-items: center;
       background: #ffffff;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      color: var(--text);
+      border: 0.5px solid rgba(0,0,0,0.10);
+      border-radius: 8px;
+      color: var(--ink);
       display: inline-flex;
-      font-weight: 700;
-      gap: 8px;
-      min-height: 36px;
-      padding: 0 12px;
+      font-weight: 500;
+      font-size: 0.85rem;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 10px;
       text-decoration: none;
     }}
     .action-btn.ai {{
-      background: #fbfaff;
-      border-color: #dbd5ff;
-      color: var(--accent);
+      background: var(--accent-soft);
+      border-color: #C3CCF0;
+      color: var(--accent-strong);
     }}
     .workspace-ai-menu {{
       position: relative;
@@ -3198,7 +3202,7 @@ def render_job_detail(
     }}
     .workspace-local-ai-title {{
       color: var(--accent-strong);
-      font-weight: 800;
+      font-weight: 500;
     }}
     .generated-ok {{
       color: var(--green);
@@ -3328,8 +3332,8 @@ def render_job_detail(
       justify-content: space-between;
     }}
     .workspace-modal-title {{
-      font-size: 1.02rem;
-      font-weight: 700;
+      font-size: 1rem;
+      font-weight: 500;
     }}
     .workspace-brief-form {{
       display: grid;

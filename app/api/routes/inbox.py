@@ -228,107 +228,138 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
         </section>
         """
     extra_styles = compact_content_rhythm_styles() + """
-    :root { --warn: #a43d2b; }
-    .inbox-list { display: grid; gap: 12px; }
+    .inbox-list { display: grid; gap: 10px; }
     .inbox-card {
-      align-items: start;
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
-      border: 1px solid var(--line-soft);
+      background: #ffffff;
+      border: var(--border-default);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
       display: grid;
-      gap: 16px;
-      grid-template-columns: minmax(0, 1fr) auto;
-      padding: 18px;
+      gap: 0;
+      overflow: hidden;
     }
-    .inbox-card-main {
+    .inbox-card-body {
       display: grid;
-      gap: 10px;
-      min-width: 0;
+      gap: 8px;
+      padding: 14px 16px 12px;
     }
     .inbox-card-title {
-      align-items: center;
+      align-items: start;
       display: flex;
       gap: 10px;
       justify-content: space-between;
       min-width: 0;
     }
     .inbox-card-title h2 {
+      font-size: 0.98rem;
+      font-weight: 500;
       min-width: 0;
       overflow-wrap: anywhere;
     }
-    .inbox-card-meta,
-    .inbox-card-summary {
+    .inbox-card-title h2 a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .inbox-card-title h2 a:hover {
+      color: var(--accent);
+    }
+    .inbox-card-meta {
       align-items: center;
       color: var(--muted);
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 12px;
+      font-size: 0.84rem;
+      gap: 4px 0;
     }
     .inbox-card-meta span:not(:last-child)::after {
       color: var(--soft-text);
       content: "·";
-      margin-left: 12px;
+      margin: 0 6px;
     }
-    .inbox-card-summary .external-link {
+    .meta { color: var(--muted); font-size: 0.88rem; }
+    .inbox-card-foot {
+      align-items: center;
+      background: rgba(247,249,252,0.72);
+      border-top: var(--border-default);
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      padding: 10px 16px;
+    }
+    .inbox-card-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .inbox-card-actions form {
+      display: contents;
+    }
+    .inbox-act {
+      align-items: center;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      height: 30px;
+      padding: 0 10px;
+      text-decoration: none;
       white-space: nowrap;
     }
-    .meta { color: var(--muted); }
-    .inbox-card-actions {
-      align-items: stretch;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-width: 120px;
+    .inbox-act.accept {
+      background: var(--success-soft);
+      border: 0.5px solid #b6dfc5;
+      color: var(--success);
     }
-    .inbox-card-actions form,
-    .inbox-card-actions button,
-    .inbox-card-actions a {
-      width: 100%;
+    .inbox-act.accept:hover { background: var(--success); color: #fff; }
+    .inbox-act.review {
+      background: var(--accent-soft);
+      border: 0.5px solid #C3CCF0;
+      color: var(--accent-strong);
     }
-    .inbox-aside { display: grid; gap: 18px; }
+    .inbox-act.review:hover { background: var(--accent); color: #fff; }
+    .inbox-act.dismiss {
+      background: transparent;
+      border: var(--border-default);
+      color: var(--muted);
+    }
+    .inbox-act.dismiss:hover { background: var(--danger-soft); border-color: #f8c4be; color: var(--danger); }
+    .inbox-aside { display: grid; gap: 16px; }
     .queue-count {
       align-items: baseline;
       display: flex;
       gap: 8px;
     }
     .queue-count strong {
-      font-size: 2rem;
+      font-size: 1.75rem;
+      font-weight: 500;
       letter-spacing: -0.02em;
       line-height: 1;
     }
     .queue-count span {
       color: var(--muted);
+      font-size: 0.88rem;
     }
     .tip-list {
       display: grid;
-      gap: 10px;
+      gap: 8px;
       list-style: none;
       margin: 0;
       padding: 0;
     }
     .tip-list li {
-      border-left: 3px solid rgba(255,255,255,0.28);
+      border-left: 2px solid rgba(255,255,255,0.28);
+      font-size: 0.88rem;
       padding-left: 10px;
     }
     .inbox-aside .mobile-stack {
       margin-top: 4px;
     }
     @media (max-width: 760px) {
-      .inbox-card {
-        grid-template-columns: 1fr;
-      }
-      .inbox-card-title,
-      .inbox-card-meta,
-      .inbox-card-summary {
-        align-items: start;
+      .inbox-card-foot {
         flex-direction: column;
-      }
-      .inbox-card-meta span::after {
-        display: none;
-      }
-      .inbox-card-actions {
-        width: 100%;
+        align-items: flex-start;
+        gap: 10px;
       }
     }
     """

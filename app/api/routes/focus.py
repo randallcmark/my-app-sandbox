@@ -381,33 +381,32 @@ def render_focus(
       grid-column: 1 / -1;
     }
     .focus-card {
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
-      border: 1px solid var(--line-soft);
+      background: #ffffff;
+      border: var(--border-default);
       border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
       display: grid;
-      gap: 14px;
-      padding: 18px;
+      gap: 12px;
+      padding: 16px 18px;
     }
     .focus-list {
       display: grid;
-      gap: 10px;
+      gap: 6px;
       list-style: none;
       margin: 0;
       padding: 0;
     }
     .focus-list li {
-      background: rgba(247,249,252,0.92);
-      border: 1px solid var(--line-soft);
-      border-radius: var(--radius-lg);
+      background: rgba(247,249,252,0.72);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
       display: grid;
-      gap: 4px;
-      padding: 14px;
+      gap: 3px;
+      padding: 10px 12px;
     }
-    .focus-list li strong { font-size: 1rem; }
+    .focus-list li strong { font-size: 0.93rem; font-weight: 500; }
     .focus-list li span,
     .focus-list li p,
-    .empty { color: var(--muted); }
+    .empty { color: var(--muted); font-size: 0.84rem; }
     .focus-card.span-wide .focus-list li {
       align-items: center;
       grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 0.8fr) minmax(180px, 1fr);
@@ -431,27 +430,27 @@ def render_focus(
       padding-left: 10px;
     }
     .empty {
-      background: rgba(247,249,252,0.92);
-      border: 1px dashed var(--line);
-      border-radius: var(--radius-lg);
-      padding: 14px;
+      background: transparent;
+      border: 0.5px dashed rgba(0,0,0,0.12);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
     }
     .flash { padding: 14px 18px; }
     .flash-success {
-      background: rgba(59, 167, 134, 0.10);
-      border-color: rgba(59, 167, 134, 0.28);
+      background: var(--success-soft);
+      border-color: #b6dfc5;
     }
     .flash-error {
-      background: rgba(226, 91, 76, 0.10);
-      border-color: rgba(226, 91, 76, 0.28);
+      background: var(--danger-soft);
+      border-color: #f8c4be;
     }
     .focus-ai-card {
-      background: rgba(232, 239, 255, 0.72);
-      border: 1px solid var(--ai-line);
+      background: var(--accent-soft);
+      border: 0.5px solid #C3CCF0;
       border-radius: var(--radius-xl);
       display: grid;
       gap: 12px;
-      padding: 18px;
+      padding: 16px 18px;
     }
     .focus-ai-card .ai-markdown {
       max-height: 220px;
