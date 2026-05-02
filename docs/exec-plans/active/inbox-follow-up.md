@@ -52,6 +52,16 @@ Continue Inbox from the first capture/review slice into richer email review, pro
 - 2026-05-01: Added review-readiness checks to the Inbox review surface for missing company,
   location, source URL, description, and low/unknown confidence so partial candidates are cleaned
   up before acceptance.
+- 2026-05-02 (T004 validation): Reviewed inbox card UX against exec-plan criteria. Confirmed:
+  - `_review_readiness_panel()` renders "Needs cleanup before accept" vs "Ready for decision"
+    with a count pill (`status-pill warn` / `status-pill success`) — visible and distinct.
+  - `_job_card()` shows the attention count inline in the card title row via `status-pill warn`
+    (`N cleanup checks`) or `status-pill success` (`Ready to decide`) so review flags are visible
+    before the user opens the detail view.
+  - Accept / Review / Dismiss button row uses distinct colour classes (`.inbox-act.accept` green,
+    `.inbox-act.review` accent-blue, `.inbox-act.dismiss` neutral → danger on hover).
+  - No UX regressions or missing review signals found. No scope-expanding provider ingestion work
+    queued — remains gated on explicit product scoping per exec-plan non-goals.
 
 ## Decisions
 

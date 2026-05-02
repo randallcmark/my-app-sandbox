@@ -76,6 +76,20 @@ Turn the Job Detail secondary sections into compact workbenches that answer what
   broader UI density cleanup, Job Workspace AI cleanup, Competency Evidence workspace redesign, and
   artefact Markdown preview quality pass. No large section redesign should proceed without landing
   against this plan.
+- 2026-05-02 (session 2): All five section workbenches implemented and wired.
+  - Application: `_application_state_bar()` + two-up role/route grid + submission history inline +
+    record/start-application forms in `<details>` disclosure.
+  - Interviews: `_interview_card()` / `_interview_cards()` sorted by scheduled_at; upcoming state
+    bar when next interview known; schedule form secondary.
+  - Follow-Ups: `_follow_up_card()` / `_follow_up_cards()` with overdue highlight; note form
+    inline; blocker/return-note/start-application collapsed in disclosures.
+  - Tasks: tightened to next-action + readiness checklist; all workflow action forms collapsed
+    behind `<details>` disclosures.
+  - Notes: add-note at top, recent activity below, journal collapsible, provenance always last.
+  - CSS for `.app-state-bar`, `.interview-card`, `.follow-up-card`, `.workspace-form-disclosure`,
+    `.workspace-inline-link` added to job_detail.py extra_styles.
+  - Dead duplicate `_workspace_tools_section()` removed.
+  - Status: Workstream 4 complete.
 
 ## Decisions
 

@@ -99,6 +99,32 @@ uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 ```
 on port 5000.
 
+## Section Workbench Pattern (Workstream 4 — complete)
+
+Each Job Detail section follows the workbench contract:
+1. **State bar** (`app-state-bar`) — pill + next-action title + hint + CTA buttons
+2. **Content grid** (`workspace-two-up`) — what exists left, action form right
+3. **Action forms** — collapsed in `<details class="workspace-form-disclosure">` disclosures
+
+| Section | State bar | Primary content | Secondary actions |
+|---------|-----------|-----------------|-------------------|
+| Application | Status + contextual next-action hint | Role details two-up + submission history | Record submission, Advance status (in disclosures) |
+| Interviews | Upcoming interview date/stage | `_interview_card()` list sorted by date | Schedule form (inline right) |
+| Follow-Ups | Follow-up count | `_follow_up_card()` list (overdue highlighted) | Note form inline; blocker/return/started in disclosures |
+| Tasks | — | Next-action + readiness checklist | Workflow actions, maintenance in disclosures |
+| Notes | — | Add-note top; recent activity; journal collapsible | Provenance last |
+
+CSS for all workbench patterns lives in `render_job_detail()` extra_styles in `job_detail.py`:
+- `.app-state-bar`, `.app-state-context`, `.app-state-title`, `.app-state-cta`
+- `.interview-card`, `.interview-card-list`, `.interview-card-head`
+- `.follow-up-card`, `.follow-up-card-list`, `.follow-up-card-head`, `.follow-up-card.overdue`
+- `.workspace-form-disclosure` (collapsible `<details>` forms)
+- `.workspace-inline-link`
+
+## Focus Surface — "No Next Action" Nudge (Workstream 5)
+
+`_list_jobs_with_no_next_action()` in `focus.py` queries active jobs with no pending `Communication.follow_up_at` and surfaces them in a new "No next action" card on the Focus grid. The aside navigation pill links to `#no-next-action`.
+
 ## Notes
 
 - Uses Replit-managed PostgreSQL (not SQLite as documented in original README)
@@ -107,3 +133,4 @@ on port 5000.
 - Board uses discrete `.refined-action` buttons with positive/negative/quiet intent classes
 - Inbox cards use a footer row with `.inbox-act` compact action buttons (accept/review/dismiss)
 - Job workspace uses a 3-column grid: left rail (nav), center (workbench), right rail (AI sidebar)
+- Dead duplicate `_workspace_tools_section()` removed in Workstream 4 session 2

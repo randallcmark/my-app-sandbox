@@ -141,6 +141,30 @@ def _count_active_jobs(db: DbSession, user: User) -> int:
     )
 
 
+def _list_jobs_with_no_next_action(db: DbSession, user: User) -> list[Job]:
+    """Active jobs that have no pending follow-up communication."""
+    subq = (
+        select(Communication.job_id)
+        .where(
+            Communication.owner_user_id == user.id,
+            Communication.follow_up_at.is_not(None),
+        )
+        .scalar_subquery()
+    )
+    return list(
+        db.scalars(
+            select(Job)
+            .where(
+                Job.owner_user_id == user.id,
+                Job.status.in_(ACTIVE_STATUSES),
+                Job.id.not_in(subq),
+            )
+            .order_by(Job.updated_at, Job.created_at)
+            .limit(8)
+        )
+    )
+
+
 def _job_link(job: Job) -> str:
     return f'<a href="/jobs/{escape(job.uuid, quote=True)}">{escape(job.title)}</a>'
 
@@ -302,6 +326,7 @@ def render_focus(
     stale_jobs: list[Job],
     recent_jobs: list[Job],
     interviews: list[InterviewEvent],
+    no_next_action_jobs: list[Job],
     active_count: int,
     ai_output: AiOutput | None = None,
     ai_target_job: Job | None = None,
@@ -354,6 +379,10 @@ def render_focus(
     stale_items = [_job_item(job, detail=f"Updated {_value(job.updated_at)}") for job in stale_jobs]
     recent_items = [_job_item(job, detail=f"Added {_value(job.created_at)}") for job in recent_jobs]
     interview_items = [_interview_item(interview) for interview in interviews]
+    no_next_action_items = [
+        _job_item(job, detail=f"Status: {job.status}")
+        for job in no_next_action_jobs
+    ]
     extra_styles = compact_content_rhythm_styles() + """
     .focus-summary {
       display: grid;
@@ -498,6 +527,7 @@ def render_focus(
           <a class="status-pill accent" href="#artefact-reviews">{len(due_artefact_followups)} artefact reviews</a>
           <a class="status-pill warn" href="#stale-active-jobs">{len(stale_jobs)} stale jobs</a>
           <a class="status-pill success" href="#upcoming-interviews">{len(interviews)} interviews</a>
+          <a class="status-pill warn" href="#no-next-action">{len(no_next_action_jobs)} no next action</a>
         </div>
       </section>
       {_focus_ai_panel(ai_target_job)}
@@ -531,6 +561,7 @@ def render_focus(
       {_section("Artefact reviews", _list(artefact_followup_items, "No artefact reviews due."), section_id="artefact-reviews")}
       {_section("Stale active jobs", _list(stale_items, "No stale active jobs."), section_id="stale-active-jobs")}
       {_section("Upcoming interviews", _list(interview_items, "No upcoming interviews."), section_id="upcoming-interviews")}
+      {_section("No next action", _list(no_next_action_items, "All active jobs have a scheduled follow-up."), section_id="no-next-action")}
       {_section("Recent prospects", _list(recent_items, "No recent saved or interested jobs."), section_id="recent-prospects", wide=True)}
     </div>
     """
@@ -585,6 +616,7 @@ def focus(
         stale_jobs=stale_jobs,
         recent_jobs=recent_jobs,
         interviews=_list_upcoming_interviews(db, current_user, now=now),
+        no_next_action_jobs=_list_jobs_with_no_next_action(db, current_user),
         active_count=_count_active_jobs(db, current_user),
         ai_output=ai_output,
         ai_target_job=ai_target_job,

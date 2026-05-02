@@ -1221,17 +1221,46 @@ def _workspace_role_notes_section(job: Job) -> str:
     )
 
 
-def _workspace_application_section(job: Job) -> str:
-    actions = f"""
-    <div class="workspace-inline-actions">
-      {_button_link("Open apply link", job.apply_url, primary=True)}
-      {_button_link("Open source", job.source_url)}
+def _application_state_bar(job: Job) -> str:
+    pill = _stage_pill(job.status)
+    apply_btn = _button_link("Open apply link ↗", job.apply_url, primary=True)
+    source_btn = _button_link("Open source ↗", job.source_url)
+    next_action_map = {
+        "saved": ("Make a decision", "Mark interested to start spending attention on this role."),
+        "interested": ("Prepare your application", "Confirm the description, links, and artefacts are in place."),
+        "preparing": ("Submit when ready", "Use the apply link to submit, then record it here."),
+        "applied": ("Track the response", "Record recruiter contact, interview scheduling, and follow-ups as they arrive."),
+        "interviewing": ("Prepare for interviews", "Keep prep notes, participants, and follow-up actions attached."),
+        "offer": ("Decide on the offer", "Record your decision and archive when the outcome is complete."),
+        "rejected": ("Capture the learning", "Add notes and archive when no longer needed."),
+        "archived": ("Archived", "Restore only if this role needs active work again."),
+    }
+    action_title, action_body = next_action_map.get(job.status, ("Choose the next step", "Use workflow controls below to move forward."))
+    return f"""
+    <div class="app-state-bar" data-ui-component="application-state-bar">
+      <div class="app-state-context">
+        {pill}
+        <div>
+          <strong class="app-state-title">{escape(action_title)}</strong>
+          <p class="muted">{escape(action_body)}</p>
+        </div>
+      </div>
+      <div class="app-state-cta">
+        {apply_btn}
+        {source_btn}
+      </div>
     </div>
     """
+
+
+def _workspace_application_section(job: Job) -> str:
+    has_applications = bool(job.applications)
+    history_html = _applications(job.applications) if has_applications else '<p class="empty">No submission recorded yet.</p>'
     body = f"""
+    {_application_state_bar(job)}
     <div class="workspace-two-up" data-ui-component="application-workbench">
       <div class="workspace-subpanel">
-        <h3>Submission essentials</h3>
+        <h3>Role details</h3>
         <dl class="overview-grid">
           {_editable_text("Company", "company", job.company)}
           {_editable_text("Location", "location", job.location)}
@@ -1242,37 +1271,40 @@ def _workspace_application_section(job: Job) -> str:
         </dl>
       </div>
       <div class="workspace-subpanel">
-        <h3>Workflow route</h3>
+        <h3>Application route</h3>
         <dl>
           {_editable_select("Status", "status", job.status)}
-          {_field("Board position", job.board_position)}
           {_editable_text("Source", "source", job.source)}
           {_editable_url("Source URL", "source_url", job.source_url, "Open source")}
           {_editable_url("Apply URL", "apply_url", job.apply_url, "Open apply link")}
         </dl>
       </div>
     </div>
-    <div class="workspace-three-up">
+    <div class="workspace-two-up">
       <div class="workspace-subpanel">
         <h3>Submission history</h3>
-        {_applications(job.applications)}
+        {history_html}
+        <details class="workspace-form-disclosure">
+          <summary>Record a submission</summary>
+          {_mark_applied_form(job)}
+        </details>
       </div>
       <div class="workspace-subpanel">
-        <h3>Advance state</h3>
+        <h3>Advance status</h3>
+        <p class="muted">Move this job to the right board position.</p>
         {_status_transition_form(job)}
-      </div>
-      <div class="workspace-subpanel">
-        <h3>Record submission</h3>
-        {_mark_applied_form(job)}
+        <details class="workspace-form-disclosure">
+          <summary>Start application externally</summary>
+          {_application_started_form(job)}
+        </details>
       </div>
     </div>
     """
     return _workspace_section(
         section_id="application",
         kicker="Application",
-        title="Submission route",
+        title="Application",
         body=body,
-        actions=actions,
     )
 
 
@@ -1799,20 +1831,71 @@ def _workspace_artefacts_section(
     )
 
 
+def _interview_card(interview: InterviewEvent) -> str:
+    scheduled = _value(interview.scheduled_at) if interview.scheduled_at else "Time not set"
+    location = escape(interview.location or "No location")
+    participants = escape(interview.participants or "")
+    notes_html = f'<p class="muted">{escape(interview.notes)}</p>' if interview.notes else ""
+    return f"""
+    <article class="interview-card">
+      <div class="interview-card-head">
+        <strong>{escape(interview.stage)}</strong>
+        <span class="workspace-ai-pill">{escape(scheduled)}</span>
+      </div>
+      <p class="muted">{location}{(" · " + participants) if interview.participants else ""}</p>
+      {notes_html}
+    </article>
+    """
+
+
+def _interview_cards(interviews: list[InterviewEvent]) -> str:
+    if not interviews:
+        return '<p class="empty">No interviews scheduled yet.</p>'
+    sorted_interviews = sorted(
+        interviews,
+        key=lambda item: item.scheduled_at or datetime.max.replace(tzinfo=UTC),
+    )
+    return "".join(_interview_card(i) for i in sorted_interviews)
+
+
 def _workspace_interviews_section(job: Job) -> str:
+    next_interview = min(
+        (i for i in job.interviews if i.scheduled_at),
+        key=lambda i: i.scheduled_at,
+        default=None,
+    )
+    state_hint = ""
+    if next_interview and next_interview.scheduled_at:
+        state_hint = f"""
+        <div class="app-state-bar">
+          <div class="app-state-context">
+            <span class="stage-pill active">Upcoming</span>
+            <div>
+              <strong class="app-state-title">{escape(next_interview.stage)}</strong>
+              <p class="muted">{escape(_value(next_interview.scheduled_at))} · {escape(next_interview.location or "No location")}</p>
+            </div>
+          </div>
+          <div class="app-state-cta">
+            {_compact_status_form(job, "offer", "Record offer", variant="outline") if job.status == "interviewing" else ""}
+          </div>
+        </div>
+        """
     body = f"""
+    {state_hint}
     <div class="workspace-two-up" data-ui-component="interviews-workbench">
       <div class="workspace-subpanel">
-        <h3>Upcoming conversations</h3>
-        {_interviews(job.interviews)}
+        <h3>Interview loop</h3>
+        <div class="interview-card-list">
+          {_interview_cards(job.interviews)}
+        </div>
       </div>
       <div class="workspace-subpanel">
-        <h3>Plan next interview</h3>
+        <h3>Schedule interview</h3>
         {_schedule_interview_form(job)}
       </div>
     </div>
     """
-    return _workspace_section(section_id="interviews", kicker="Interviews", title="Interview loop", body=body)
+    return _workspace_section(section_id="interviews", kicker="Interviews", title="Interviews", body=body)
 
 
 def _follow_up_list(job: Job) -> str:
@@ -1831,61 +1914,117 @@ def _follow_up_list(job: Job) -> str:
     return "<ol>" + "".join(items) + "</ol>"
 
 
+def _follow_up_card(event: Communication) -> str:
+    due = event.follow_up_at
+    now = datetime.now(UTC)
+    if due and due.tzinfo is None:
+        due = due.replace(tzinfo=UTC)
+    is_overdue = due is not None and due < now
+    pill_class = "stage-pill active" if is_overdue else "workspace-ai-pill"
+    pill_label = "Overdue" if is_overdue else _value(due)
+    notes_html = f'<p class="muted">{escape(event.notes)}</p>' if event.notes else ""
+    return f"""
+    <article class="follow-up-card{' overdue' if is_overdue else ''}">
+      <div class="follow-up-card-head">
+        <strong>{escape(event.subject or "Follow-up")}</strong>
+        <span class="{pill_class}">{escape(pill_label)}</span>
+      </div>
+      {notes_html}
+    </article>
+    """
+
+
+def _follow_up_cards(job: Job) -> str:
+    follow_ups = _follow_up_events(job)
+    if not follow_ups:
+        return '<p class="empty">No follow-ups scheduled yet.</p>'
+    return "".join(_follow_up_card(e) for e in follow_ups)
+
+
 def _workspace_follow_ups_section(job: Job) -> str:
+    count = len(_follow_up_events(job))
+    state_label = f"{count} scheduled" if count else "None scheduled"
     body = f"""
-    <div class="workspace-three-up" data-ui-component="follow-ups-workbench">
+    <div class="workspace-two-up" data-ui-component="follow-ups-workbench">
       <div class="workspace-subpanel">
-        <h3>Follow-up queue</h3>
-        {_follow_up_list(job)}
+        <h3>Follow-up queue <span class="workspace-nav-count">{escape(str(count)) if count else "0"}</span></h3>
+        <div class="follow-up-card-list">
+          {_follow_up_cards(job)}
+        </div>
       </div>
       <div class="workspace-subpanel">
-        <h3>Start application</h3>
-        {_application_started_form(job)}
+        <h3>Add a note or follow-up</h3>
+        {_note_form(job)}
+      </div>
+    </div>
+    <div class="workspace-two-up">
+      <div class="workspace-subpanel">
+        <details class="workspace-form-disclosure">
+          <summary>Record a blocker</summary>
+          {_blocker_form(job)}
+        </details>
+        <details class="workspace-form-disclosure">
+          <summary>Record a return note</summary>
+          {_return_note_form(job)}
+        </details>
       </div>
       <div class="workspace-subpanel">
-        <h3>Surface blockers</h3>
-        {_blocker_form(job)}
-      </div>
-      <div class="workspace-subpanel">
-        <h3>Queue return note</h3>
-        {_return_note_form(job)}
+        <details class="workspace-form-disclosure">
+          <summary>Mark application started</summary>
+          {_application_started_form(job)}
+        </details>
       </div>
     </div>
     """
-    return _workspace_section(section_id="follow-ups", kicker="Follow-ups", title="Follow-up queue", body=body)
+    return _workspace_section(section_id="follow-ups", kicker="Follow-ups", title="Follow-ups", body=body)
 
 
 def _workspace_tasks_section(job: Job, artefacts: list[Artefact]) -> str:
+    done, total = _workspace_readiness_score(job, artefacts)
+    readiness_pill = f'<span class="workspace-ai-pill">Ready {done}/{total}</span>'
     body = f"""
     <div class="workspace-two-up" data-ui-component="tasks-workbench">
       <div class="workspace-subpanel">
-        <h3>Current focus</h3>
+        <h3>Next action</h3>
         {_next_action(job)}
       </div>
       <div class="workspace-subpanel">
-        <h3>Readiness</h3>
-        {_readiness(job, artefacts)}
+        <h3>Readiness {readiness_pill}</h3>
+        <ol class="readiness-list">
+          {_readiness_item("Role captured", bool(job.title and job.description_raw), "Title and description in place." if job.description_raw else "Add the job description.")}
+          {_readiness_item("Application link", bool(job.apply_url or job.source_url), "External route is set." if job.apply_url or job.source_url else "Add a source or apply URL.")}
+          {_readiness_item("Artefacts attached", bool(artefacts), "Files are attached." if artefacts else "Upload a resume or prep file.")}
+          {_readiness_item("Application recorded", bool(job.applications), "Submission on record." if job.applications else "Mark applied once submitted.")}
+        </ol>
+        <a class="workspace-inline-link" href="/jobs/{escape(job.uuid, quote=True)}?section=documents">Open documents ›</a>
       </div>
     </div>
-    <div class="workspace-three-up">
+    <div class="workspace-two-up">
       <div class="workspace-subpanel">
         <h3>Workflow actions</h3>
-        {_mark_applied_form(job)}
-        {_status_transition_form(job)}
-        {_schedule_interview_form(job)}
-        {_application_started_form(job)}
-      </div>
-      <div class="workspace-subpanel">
-        <h3>Follow-through</h3>
-        {_blocker_form(job)}
-        {_return_note_form(job)}
+        <details class="workspace-form-disclosure">
+          <summary>Record submission</summary>
+          {_mark_applied_form(job)}
+        </details>
+        <details class="workspace-form-disclosure">
+          <summary>Advance status</summary>
+          {_status_transition_form(job)}
+        </details>
+        <details class="workspace-form-disclosure">
+          <summary>Schedule interview</summary>
+          {_schedule_interview_form(job)}
+        </details>
       </div>
       <div class="workspace-subpanel">
         <h3>Maintenance</h3>
-        {_archive_form(job)}
-        {_unarchive_form(job)}
-        <p class="muted">Go to Documents for uploads, existing artefacts, or local AI drafting.</p>
-        <a class="button-link" href="/jobs/{escape(job.uuid, quote=True)}?section=documents">Open documents</a>
+        <details class="workspace-form-disclosure">
+          <summary>Archive this job</summary>
+          {_archive_form(job)}
+        </details>
+        <details class="workspace-form-disclosure">
+          <summary>Restore archived job</summary>
+          {_unarchive_form(job)}
+        </details>
       </div>
     </div>
     """
@@ -1917,26 +2056,27 @@ def _recent_activity(job: Job, events: list[Communication], artefacts: list[Arte
 
 
 def _workspace_notes_section(job: Job, events: list[Communication], artefacts: list[Artefact]) -> str:
+    event_count = len(events)
     body = f"""
     <div class="workspace-two-up" data-ui-component="notes-workbench">
+      <div class="workspace-subpanel">
+        <h3>Add note or follow-up</h3>
+        {_note_form(job)}
+      </div>
       <div class="workspace-subpanel">
         <h3>Recent activity</h3>
         {_recent_activity(job, events, artefacts)}
       </div>
-      <div class="workspace-subpanel">
-        <h3>Add note</h3>
-        {_note_form(job)}
-      </div>
     </div>
-    {_provenance(job)}
     <section class="workspace-subpanel">
       <details class="timeline-panel">
-        <summary>Journal</summary>
+        <summary>Journal <span class="workspace-nav-count">{event_count}</span></summary>
         {_timeline(events)}
       </details>
     </section>
+    {_provenance(job)}
     """
-    return _workspace_section(section_id="notes", kicker="Notes", title="Activity, context, and provenance", body=body)
+    return _workspace_section(section_id="notes", kicker="Notes", title="Notes", body=body)
 
 
 def _workspace_ai_assessment(ai_outputs: list[AiOutput]) -> str:
@@ -1988,40 +2128,6 @@ def _workspace_ai_sidebar(job: Job, ai_outputs: list[AiOutput], artefact_lookup:
     """
 
 
-def _workspace_tools_section(job: Job, artefacts: list[Artefact]) -> str:
-    body = f"""
-    <div class="workspace-two-up" data-ui-component="tasks-workbench">
-      <div class="workspace-subpanel">
-        <h3>Current focus</h3>
-        {_next_action(job)}
-      </div>
-      <div class="workspace-subpanel">
-        <h3>Workflow actions</h3>
-        {_mark_applied_form(job)}
-        {_status_transition_form(job)}
-        {_schedule_interview_form(job)}
-        {_application_started_form(job)}
-      </div>
-    </div>
-    <div class="workspace-three-up">
-      <div class="workspace-subpanel">
-        <h3>Follow-through</h3>
-        {_blocker_form(job)}
-        {_return_note_form(job)}
-      </div>
-      <div class="workspace-subpanel" id="workspace-tools">
-        <h3>Maintenance</h3>
-        {_archive_form(job)}
-        {_unarchive_form(job)}
-      </div>
-      <div class="workspace-subpanel">
-        <h3>Document work</h3>
-        <p class="muted">Go to Documents when you need uploads, existing artefacts, or local AI drafting.</p>
-        <a class="button-link" href="/jobs/{escape(job.uuid, quote=True)}?section=documents">Open documents</a>
-      </div>
-    </div>
-    """
-    return _workspace_section(section_id="tasks", kicker="Tasks", title="Tasks", body=body)
 
 
 def _workspace_utility_strip(job: Job, artefacts: list[Artefact]) -> str:
@@ -3446,6 +3552,92 @@ def render_job_detail(
       padding-left: 0;
     }}
     .timeline-panel ol {{ margin-top: 12px; }}
+    .app-state-bar {{
+      align-items: start;
+      background: rgba(247,249,252,0.72);
+      border: 0.5px solid var(--line);
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 14px 16px;
+    }}
+    .app-state-context {{
+      align-items: flex-start;
+      display: flex;
+      flex: 1;
+      flex-wrap: wrap;
+      gap: 10px;
+    }}
+    .app-state-title {{
+      display: block;
+      font-size: 0.93rem;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }}
+    .app-state-bar .muted {{ margin: 0; font-size: 0.84rem; }}
+    .app-state-cta {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }}
+    .interview-card-list,
+    .follow-up-card-list {{
+      display: grid;
+      gap: 8px;
+    }}
+    .interview-card,
+    .follow-up-card {{
+      background: rgba(247,249,252,0.72);
+      border: 0.5px solid var(--line);
+      border-radius: var(--radius-md);
+      display: grid;
+      gap: 4px;
+      padding: 12px 14px;
+    }}
+    .follow-up-card.overdue {{
+      background: var(--amber-soft);
+      border-color: #f9d9a0;
+    }}
+    .interview-card-head,
+    .follow-up-card-head {{
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }}
+    .interview-card p,
+    .follow-up-card p {{ font-size: 0.84rem; margin: 0; }}
+    .workspace-form-disclosure {{
+      border: 0.5px solid var(--line);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }}
+    .workspace-form-disclosure > summary {{
+      color: var(--accent-strong);
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      list-style: none;
+      padding: 10px 14px;
+    }}
+    .workspace-form-disclosure > summary::-webkit-details-marker {{ display: none; }}
+    .workspace-form-disclosure[open] > summary {{
+      border-bottom: 0.5px solid var(--line);
+    }}
+    .workspace-form-disclosure .note-form,
+    .workspace-form-disclosure .quick-action-form,
+    .workspace-form-disclosure .job-form {{
+      padding: 14px;
+    }}
+    .workspace-inline-link {{
+      color: var(--accent-strong);
+      font-size: 0.88rem;
+      font-weight: 500;
+      text-decoration: none;
+    }}
+    .workspace-inline-link:hover {{ text-decoration: underline; }}
     @media (max-width: 1360px) {{
       .workspace-grid {{ grid-template-columns: 220px minmax(0, 1fr) 300px; }}
     }}
