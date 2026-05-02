@@ -3,6 +3,27 @@ from html import escape
 from typing import Annotated
 from urllib.parse import quote, urlparse
 
+
+def _icon(path: str, *, w: int = 14, h: int = 14) -> str:
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
+        f'viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+        f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+        f'aria-hidden="true">{path}</svg>'
+    )
+
+
+_ICON_CHECK = _icon('<polyline points="3 10 8 15 17 5"/>')
+_ICON_EYE   = _icon(
+    '<path d="M1.5 10S5 4 10 4s8.5 6 8.5 6S15 16 10 16s-8.5-6-8.5-6z"/>'
+    '<circle cx="10" cy="10" r="2.5"/>'
+)
+_ICON_X = _icon(
+    '<line x1="4" y1="4" x2="16" y2="16"/>'
+    '<line x1="16" y1="4" x2="4" y2="16"/>'
+)
+_ICON_LINK = _icon('<path d="M8 3H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-3"/><polyline points="15 3 20 3 20 8"/><line x1="10" y1="14" x2="20" y2="3"/>')
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -105,7 +126,7 @@ def _source_action(job: Job) -> str:
     url = job.source_url or job.apply_url
     if not url:
         return '<span class="meta">No source link captured</span>'
-    return f'<a class="external-link" href="{escape(url, quote=True)}" target="_blank" rel="noreferrer">Open source ↗</a>'
+    return f'<a class="external-link" href="{escape(url, quote=True)}" target="_blank" rel="noreferrer">{_ICON_LINK}<span>Open source</span></a>'
 
 
 def _review_attention_items(job: Job) -> list[tuple[str, str, str]]:
@@ -195,11 +216,11 @@ def _job_card(job: Job) -> str:
       <div class="inbox-card-foot">
         <div class="inbox-card-actions">
           <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/accept">
-            <button class="inbox-act accept" type="submit">Accept</button>
+            <button class="inbox-act accept" type="submit">{_ICON_CHECK}<span>Accept</span></button>
           </form>
-          <a class="inbox-act review" href="/inbox/{escape(job.uuid, quote=True)}/review">Review</a>
+          <a class="inbox-act review" href="/inbox/{escape(job.uuid, quote=True)}/review">{_ICON_EYE}<span>Review</span></a>
           <form method="post" action="/inbox/{escape(job.uuid, quote=True)}/dismiss">
-            <button class="inbox-act dismiss" type="submit">Dismiss</button>
+            <button class="inbox-act dismiss" type="submit">{_ICON_X}<span>Dismiss</span></button>
           </form>
         </div>
         {_source_action(job)}
@@ -301,29 +322,44 @@ def render_inbox(user: User, jobs: list[Job]) -> HTMLResponse:
       font: inherit;
       font-size: 0.82rem;
       font-weight: 500;
-      height: 30px;
-      padding: 0 10px;
+      gap: 5px;
+      height: 32px;
+      padding: 0 11px;
       text-decoration: none;
+      transition: background 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
       white-space: nowrap;
     }
+    .inbox-act svg { flex-shrink: 0; }
     .inbox-act.accept {
       background: var(--success-soft);
       border: 0.5px solid #b6dfc5;
       color: var(--success);
     }
-    .inbox-act.accept:hover { background: var(--success); color: #fff; }
+    .inbox-act.accept:hover { background: var(--success); border-color: var(--success); color: #fff; }
     .inbox-act.review {
       background: var(--accent-soft);
       border: 0.5px solid #C3CCF0;
       color: var(--accent-strong);
     }
-    .inbox-act.review:hover { background: var(--accent); color: #fff; }
+    .inbox-act.review:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
     .inbox-act.dismiss {
       background: transparent;
       border: var(--border-default);
       color: var(--muted);
     }
     .inbox-act.dismiss:hover { background: var(--danger-soft); border-color: #f8c4be; color: var(--danger); }
+    .external-link {
+      align-items: center;
+      color: var(--muted);
+      display: inline-flex;
+      font-size: 0.82rem;
+      font-weight: 500;
+      gap: 5px;
+      text-decoration: none;
+      transition: color 120ms ease-out;
+    }
+    .external-link:hover { color: var(--accent-strong); }
+    .external-link svg { flex-shrink: 0; }
     .inbox-aside { display: grid; gap: 16px; }
     .queue-count {
       align-items: baseline;

@@ -14,6 +14,39 @@ from app.services.jobs import BOARD_STATUSES, list_user_jobs
 
 router = APIRouter(tags=["board"])
 
+
+def _icon(path: str, *, w: int = 14, h: int = 14) -> str:
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
+        f'viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+        f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+        f'aria-hidden="true">{path}</svg>'
+    )
+
+
+_ICON_KEEP     = _icon('<polygon points="10 2 12.5 7.5 18.5 8.2 14 12.5 15.4 18.5 10 15.3 4.6 18.5 6 12.5 1.5 8.2 7.5 7.5"/>')
+_ICON_PENCIL   = _icon('<path d="M13.5 2.5l4 4L6.5 18H2.5v-4L13.5 2.5z"/>')
+_ICON_SEND     = _icon('<path d="M17.5 2.5L2 9l6 2 2 7 7.5-15.5z"/><line x1="8" y1="11" x2="17.5" y2="2.5"/>')
+_ICON_CHAT     = _icon('<path d="M3 3h14a1 1 0 011 1v9a1 1 0 01-1 1H8l-5 3V4a1 1 0 011-1z"/>')
+_ICON_CLOCK    = _icon('<circle cx="10" cy="10" r="8"/><polyline points="10 5.5 10 10 13 12.5"/>')
+_ICON_ARCHIVE  = _icon('<rect x="3" y="7" width="14" height="9.5" rx="1"/><rect x="2" y="4" width="16" height="3" rx="0.75"/><line x1="8" y1="12" x2="12" y2="12"/>')
+_ICON_OFFER    = _icon('<rect x="2" y="8.5" width="16" height="9" rx="1"/><path d="M7 8.5V6a3 3 0 016 0v2.5"/><line x1="2" y1="12.5" x2="18" y2="12.5"/>')
+_ICON_REJECT   = _icon('<circle cx="10" cy="10" r="8"/><line x1="6" y1="10" x2="14" y2="10"/>')
+_ICON_UNDO     = _icon('<polyline points="3 8 3 3 8 3"/><path d="M3 3a9 9 0 100 14"/>')
+_ICON_CHECK    = _icon('<polyline points="3 10 8 15 17 5"/>')
+
+_BOARD_ACTION_ICONS: dict[str, str] = {
+    "interested":   _ICON_KEEP,
+    "archived":     _ICON_ARCHIVE,
+    "preparing":    _ICON_PENCIL,
+    "applied":      _ICON_SEND,
+    "interviewing": _ICON_CHAT,
+    "offer":        _ICON_OFFER,
+    "rejected":     _ICON_REJECT,
+    "saved":        _ICON_CLOCK,
+    "restored":     _ICON_UNDO,
+}
+
 BOARD_LABELS = {
     "saved": "Saved",
     "interested": "Interested",
@@ -163,11 +196,12 @@ def _refined_action_buttons(job: Job) -> str:
         intent = "positive" if target_status in {"interested", "preparing", "applied", "interviewing", "offer", "saved"} else "quiet"
         if target_status in {"archived", "rejected"}:
             intent = "negative"
+        icon = _BOARD_ACTION_ICONS.get(target_status, "")
         buttons.append(
             '<button class="refined-action '
             f'{escape(intent, quote=True)}" type="button" '
             f'data-status-target="{escape(target_status, quote=True)}">'
-            f"{escape(label)}</button>"
+            f'{icon}<span>{escape(label)}</span></button>'
         )
     return "".join(buttons)
 
@@ -392,7 +426,7 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     }}
 
     .refined-item {{
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(249,251,253,0.98));
+      background: linear-gradient(180deg, #ffffff, rgba(249,251,253,0.98));
       border: 1px solid var(--line-soft);
       border-left: 3px solid var(--accent);
       border-radius: var(--radius-lg);
@@ -400,6 +434,12 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
       display: block;
       min-height: 112px;
       padding: 14px;
+      transition: box-shadow 140ms ease-out, transform 140ms ease-out;
+    }}
+
+    .refined-item:hover {{
+      box-shadow: 0 4px 18px rgba(16, 34, 52, 0.13);
+      transform: translateY(-1px);
     }}
 
     .refined-item[draggable="true"] {{
@@ -408,6 +448,7 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
 
     .refined-item.dragging {{
       opacity: 0.55;
+      transform: none;
     }}
 
     .refined-lane.drag-over {{
@@ -541,16 +582,23 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
     }}
 
     .refined-action {{
+      align-items: center;
       background: transparent;
       border: 0.5px solid transparent;
+      border-radius: 10px;
       color: var(--muted);
       cursor: pointer;
+      display: inline-flex;
       font-size: 0.82rem;
       font-weight: 500;
+      gap: 5px;
       min-height: 32px;
-      padding: 0 9px;
+      padding: 0 10px;
+      transition: background 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out;
       width: auto;
     }}
+
+    .refined-action svg {{ flex-shrink: 0; }}
 
     .refined-action.positive {{
       background: var(--slate-soft);
@@ -564,7 +612,7 @@ def render_refined_board(user: User, jobs: list[Job], *, workflow: str = "in_pro
       color: var(--danger);
     }}
 
-    .refined-action:hover {{
+    .refined-action:hover:not(:disabled) {{
       background: var(--accent);
       border-color: var(--accent);
       color: #ffffff;

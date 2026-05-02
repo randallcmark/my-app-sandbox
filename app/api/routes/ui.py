@@ -14,6 +14,62 @@ PRIMARY_NAV: tuple[NavLink, ...] = (
 )
 
 
+def _icon(path: str, *, w: int = 15, h: int = 15) -> str:
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
+        f'viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+        f'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" '
+        f'aria-hidden="true">{path}</svg>'
+    )
+
+
+ICON_PLUS = _icon(
+    '<line x1="10" y1="3" x2="10" y2="17"/>'
+    '<line x1="3" y1="10" x2="17" y2="10"/>',
+    w=14, h=14,
+)
+ICON_FOCUS = _icon(
+    '<circle cx="10" cy="10" r="2.5"/>'
+    '<circle cx="10" cy="10" r="7.5"/>'
+    '<line x1="10" y1="1" x2="10" y2="4.5"/>'
+    '<line x1="10" y1="15.5" x2="10" y2="19"/>'
+    '<line x1="1" y1="10" x2="4.5" y2="10"/>'
+    '<line x1="15.5" y1="10" x2="19" y2="10"/>',
+    w=14, h=14,
+)
+ICON_INBOX = _icon(
+    '<path d="M3 10h4l1.5 2.5h3L13 10h4"/>'
+    '<rect x="2" y="4" width="16" height="13" rx="1.5"/>',
+    w=14, h=14,
+)
+ICON_BOARD = _icon(
+    '<rect x="2" y="2" width="6" height="16" rx="1.5"/>'
+    '<rect x="12" y="2" width="6" height="10" rx="1.5"/>',
+    w=14, h=14,
+)
+ICON_SETTINGS = _icon(
+    '<circle cx="10" cy="10" r="2.5"/>'
+    '<path d="M10 1.5v2.5M10 16v2.5M1.5 10H4M16 10h2.5'
+    'M4.4 4.4l1.8 1.8M13.8 13.8l1.8 1.8M4.4 15.6l1.8-1.8M13.8 6.2l1.8-1.8"/>',
+    w=14, h=14,
+)
+ICON_USER = _icon(
+    '<circle cx="10" cy="6.5" r="3.5"/>'
+    '<path d="M2.5 18a7.5 7.5 0 0115 0"/>',
+    w=14, h=14,
+)
+ICON_CHEVRON_DOWN = _icon(
+    '<polyline points="5 8 10 13 15 8"/>',
+    w=13, h=13,
+)
+
+_NAV_ICONS: dict[str, str] = {
+    "focus": ICON_FOCUS,
+    "inbox": ICON_INBOX,
+    "board": ICON_BOARD,
+}
+
+
 def shell_token_styles() -> str:
     return """
     :root {
@@ -184,32 +240,45 @@ def shell_token_styles() -> str:
 
     .app-nav a {
       align-items: center;
+      border: 0.5px solid transparent;
       border-radius: 10px;
       color: var(--muted);
       display: inline-flex;
       flex: 0 0 auto;
       font-size: 0.9rem;
       font-weight: 400;
-      min-height: 38px;
+      gap: 6px;
+      min-height: 34px;
       padding: 0 10px;
-      position: relative;
+      transition: color var(--transition-fast), background var(--transition-fast);
       white-space: nowrap;
     }
 
-    .app-nav a.active {
+    .app-nav a:hover:not(.active) {
+      background: var(--surface-muted);
       color: var(--ink);
+    }
+
+    .app-nav a svg {
+      flex-shrink: 0;
+      opacity: 0.72;
+      transition: opacity var(--transition-fast);
+    }
+
+    .app-nav a:hover svg,
+    .app-nav a.active svg {
+      opacity: 1;
+    }
+
+    .app-nav a.active {
+      background: var(--accent-soft);
+      border-color: #C3CCF0;
+      color: var(--accent-strong);
       font-weight: 500;
     }
 
     .app-nav a.active::after {
-      background: var(--accent);
-      border-radius: 999px;
-      bottom: -15px;
-      content: "";
-      height: 2px;
-      left: 10px;
-      position: absolute;
-      right: 10px;
+      display: none;
     }
 
     .header-context {
@@ -308,9 +377,19 @@ def shell_token_styles() -> str:
       display: inline-flex;
       font: inherit;
       font-weight: 500;
+      gap: 6px;
       justify-content: center;
       padding: 6px 14px;
       white-space: nowrap;
+    }
+
+    .button svg,
+    .btn svg,
+    button svg,
+    .secondary svg,
+    .ghost svg,
+    .icon-btn svg {
+      flex-shrink: 0;
     }
 
     .button,
@@ -1171,7 +1250,7 @@ def app_header(
           <summary class="shell-topbar-action" aria-label="User menu">
             <span class="avatar-mark">{escape(_initials(user.email))}</span>
             <span>{escape(user.email)}</span>
-            <span aria-hidden="true">⌄</span>
+            {ICON_CHEVRON_DOWN}
           </summary>
           <div class="user-menu-panel">
             <p class="user-menu-head">{escape(user.email)}</p>
@@ -1196,12 +1275,13 @@ def _initials(value: str) -> str:
 def _render_link(label: str, href: str, key: str, *, active: str | None) -> str:
     class_attr = ' class="active"' if active == key else ""
     escaped_href = escape(href, quote=True).replace("&amp;", "&")
-    return f'<a{class_attr} href="{escaped_href}">{escape(label)}</a>'
+    icon = _NAV_ICONS.get(key, "")
+    return f'<a{class_attr} href="{escaped_href}">{icon}<span>{escape(label)}</span></a>'
 
 
 def _render_action_link(label: str, href: str) -> str:
     escaped_href = escape(href, quote=True).replace("&amp;", "&")
-    return f'<a class="btn shell-topbar-action" href="{escaped_href}">{escape(label)}</a>'
+    return f'<a class="btn shell-topbar-action" href="{escaped_href}">{ICON_PLUS}<span>{escape(label)}</span></a>'
 
 
 def _render_user_menu_link(label: str, href: str, *, active: bool) -> str:
