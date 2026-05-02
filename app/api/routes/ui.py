@@ -1032,6 +1032,138 @@ def shell_token_styles() -> str:
       }
     }
 
+    /* ── Preset colour themes ───────────────────────────────────────── */
+    [data-theme="ocean"]  { --accent:#0B9090; --accent-strong:#065f5f; --accent-soft:#d6f2f2; --ai-bg:#d6f2f2; --ai-line:#8fd6d6; --bg-start:#083840; --bg-mid:#0a4550; }
+    [data-theme="forest"] { --accent:#2E7D46; --accent-strong:#1a5230; --accent-soft:#e0f0e8; --ai-bg:#e0f0e8; --ai-line:#90c8a8; --bg-start:#183828; --bg-mid:#1c4030; }
+    [data-theme="rose"]   { --accent:#C0395D; --accent-strong:#8a1f3f; --accent-soft:#fde8ef; --ai-bg:#fde8ef; --ai-line:#e8a0b8; --bg-start:#481220; --bg-mid:#58192c; }
+    [data-theme="amber"]  { --accent:#B06000; --accent-strong:#7a4000; --accent-soft:#fde8c0; --ai-bg:#fde8c0; --ai-line:#d4a060; --bg-start:#3a2200; --bg-mid:#462a00; }
+    [data-theme="slate"]  { --accent:#3D5475; --accent-strong:#243550; --accent-soft:#dde4ef; --ai-bg:#dde4ef; --ai-line:#9aaac0; --bg-start:#1c2a3c; --bg-mid:#22344a; }
+    [data-theme="violet"] { --accent:#7C4DDB; --accent-strong:#5530a0; --accent-soft:#ede6fb; --ai-bg:#ede6fb; --ai-line:#b898e8; --bg-start:#281250; --bg-mid:#321a62; }
+
+    /* ── Dark mode ──────────────────────────────────────────────────── */
+    html[data-scheme="dark"] {
+      color-scheme: dark;
+      --shell-bg: rgba(12,20,34,0.97);
+      --shell-line: rgba(255,255,255,0.08);
+      --surface: #16243a;
+      --surface-soft: #1a2c40;
+      --surface-muted: #121e2e;
+      --panel: rgba(18,28,44,0.99);
+      --ink: #dce8f2;
+      --muted: #7888a2;
+      --soft-text: #4e647e;
+      --line: rgba(255,255,255,0.07);
+      --line-soft: rgba(255,255,255,0.04);
+      --border-default: 0.5px solid rgba(255,255,255,0.07);
+      --border-hover: 0.5px solid rgba(255,255,255,0.15);
+      --success-soft: #0e2618;
+      --danger-soft: #2c1012;
+      --amber-soft: #281c06;
+      --accent-soft: #18205c;
+      --ai-bg: #18205c;
+      --ai-line: #283488;
+      --shadow-xl: 0 28px 70px rgba(0,0,0,0.55);
+      --shadow-lg: 0 16px 40px rgba(0,0,0,0.42);
+      --shadow-md: 0 10px 24px rgba(0,0,0,0.36);
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.32);
+    }
+    html[data-scheme="dark"] body {
+      background:
+        radial-gradient(circle at top center, rgba(18,38,70,0.15), transparent 38%),
+        linear-gradient(90deg, #07111e 0%, #0a1624 18%, #0e1a2c 58%, #0b1520 100%);
+    }
+    html[data-scheme="dark"] .scenic-backdrop {
+      background:
+        linear-gradient(to top, rgba(0,6,16,0.9), transparent 80%),
+        radial-gradient(110% 90% at 10% 100%, rgba(0,10,30,0.95), transparent 38%);
+    }
+    html[data-scheme="dark"] .app-topbar {
+      background: rgba(12,20,34,0.96);
+      border-bottom-color: rgba(255,255,255,0.06);
+    }
+    html[data-scheme="dark"] .app-window {
+      background: rgba(10,18,30,0.99);
+      border-color: rgba(255,255,255,0.06);
+    }
+    html[data-scheme="dark"] .app-brand { color: var(--ink); }
+    html[data-scheme="dark"] .app-nav a { color: var(--muted); }
+    html[data-scheme="dark"] .app-nav a.active {
+      background: rgba(79,103,228,0.18);
+      border-color: rgba(79,103,228,0.35);
+      color: #90a8ff;
+    }
+    html[data-scheme="dark"] .shell-topbar-action,
+    html[data-scheme="dark"] .user-menu > summary,
+    html[data-scheme="dark"] .icon-btn {
+      background: rgba(22,34,52,0.92);
+      border-color: rgba(255,255,255,0.09);
+      color: var(--ink);
+    }
+    html[data-scheme="dark"] .secondary,
+    html[data-scheme="dark"] button.secondary {
+      background: rgba(22,34,52,0.92);
+      border-color: rgba(255,255,255,0.09);
+      color: var(--ink);
+    }
+    html[data-scheme="dark"] .avatar-mark {
+      background: linear-gradient(180deg, #1c3050, #142440);
+      border-color: rgba(255,255,255,0.09);
+      color: var(--ink);
+    }
+    html[data-scheme="dark"] .user-menu-panel {
+      background: rgba(16,26,42,0.99);
+      border-color: rgba(255,255,255,0.09);
+    }
+    html[data-scheme="dark"] .user-menu-panel a,
+    html[data-scheme="dark"] .user-menu-panel button { color: var(--ink); }
+    html[data-scheme="dark"] .user-menu-panel a:hover,
+    html[data-scheme="dark"] .user-menu-panel button:hover { background: rgba(255,255,255,0.06); }
+    html[data-scheme="dark"] input,
+    html[data-scheme="dark"] select,
+    html[data-scheme="dark"] textarea {
+      background: var(--surface-soft);
+      border-color: rgba(255,255,255,0.08);
+      color: var(--ink);
+    }
+    html[data-scheme="dark"] .page-panel { background: var(--panel); }
+    html[data-scheme="dark"] .inbox-card,
+    html[data-scheme="dark"] .focus-section,
+    html[data-scheme="dark"] .aside-panel,
+    html[data-scheme="dark"] .stat-card,
+    html[data-scheme="dark"] .inbox-empty { background: var(--surface); }
+    html[data-scheme="dark"] .section-head { border-bottom-color: rgba(255,255,255,0.06); }
+    html[data-scheme="dark"] .focus-row { border-bottom-color: rgba(255,255,255,0.05); }
+    html[data-scheme="dark"] .aside-nav-list li { border-bottom-color: rgba(255,255,255,0.05); }
+    html[data-scheme="dark"] .focus-row:hover,
+    html[data-scheme="dark"] .aside-nav-item:hover { background: rgba(255,255,255,0.04); }
+    html[data-scheme="dark"] .header-context-chip {
+      background: rgba(22,34,52,0.92);
+      border-color: rgba(255,255,255,0.09);
+    }
+
+    /* ── Scheme toggle button ───────────────────────────────────────── */
+    #at-scheme-btn {
+      align-items: center;
+      background: rgba(255,255,255,0.78);
+      border: var(--border-default);
+      border-radius: var(--radius-md);
+      color: var(--soft-text);
+      cursor: pointer;
+      display: inline-flex;
+      flex-shrink: 0;
+      font: inherit;
+      height: 34px;
+      justify-content: center;
+      padding: 0;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+      width: 34px;
+    }
+    #at-scheme-btn:hover { color: var(--ink); }
+    html[data-scheme="dark"] #at-scheme-btn {
+      background: rgba(22,34,52,0.92);
+      border-color: rgba(255,255,255,0.09);
+    }
+
     """
 
 
@@ -1061,6 +1193,7 @@ def render_public_shell_page(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {_fouc_script()}
   <title>{escape(page_title)} - Application Tracker</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="/favicon.ico">
@@ -1088,6 +1221,84 @@ def render_public_shell_page(
 </html>"""
 
 
+def _fouc_script() -> str:
+    return (
+        "<script>try{"
+        "var _s=localStorage.getItem('at-scheme')||'system',"
+        "_p=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';"
+        "document.documentElement.dataset.scheme=_s==='system'?_p:_s;"
+        "var _t=localStorage.getItem('at-theme')||'';"
+        "if(_t&&_t!=='custom')document.documentElement.dataset.theme=_t;"
+        "var _ca=localStorage.getItem('at-custom-accent')||'';"
+        "if(_ca){"
+        "document.documentElement.style.setProperty('--accent',_ca);"
+        "document.documentElement.style.setProperty('--accent-strong',_ca);}"
+        "}catch(e){}</script>"
+    )
+
+
+def _scheme_js() -> str:
+    sun = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20"'
+        ' fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"'
+        ' stroke-linejoin="round" aria-hidden="true">'
+        '<circle cx="10" cy="10" r="3.5"/>'
+        '<line x1="10" y1="1.5" x2="10" y2="4"/><line x1="10" y1="16" x2="10" y2="18.5"/>'
+        '<line x1="1.5" y1="10" x2="4" y2="10"/><line x1="16" y1="10" x2="18.5" y2="10"/>'
+        '<line x1="4.4" y1="4.4" x2="6.2" y2="6.2"/>'
+        '<line x1="13.8" y1="13.8" x2="15.6" y2="15.6"/>'
+        '<line x1="4.4" y1="15.6" x2="6.2" y2="13.8"/>'
+        '<line x1="13.8" y1="6.2" x2="15.6" y2="4.4"/></svg>'
+    )
+    moon = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20"'
+        ' fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"'
+        ' stroke-linejoin="round" aria-hidden="true">'
+        '<path d="M16 10.8A7 7 0 019.2 4c0-.9.1-1.8.4-2.6A7.5 7.5 0 1018.6 10.4 7 7 0 0116 10.8z"/>'
+        '</svg>'
+    )
+    monitor = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20"'
+        ' fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"'
+        ' stroke-linejoin="round" aria-hidden="true">'
+        '<rect x="2" y="3" width="16" height="11" rx="1.5"/>'
+        '<line x1="7" y1="18" x2="13" y2="18"/>'
+        '<line x1="10" y1="14" x2="10" y2="18"/></svg>'
+    )
+    return f"""  <script>
+    (() => {{
+      const ICONS = {{ light: `{sun}`, system: `{monitor}`, dark: `{moon}` }};
+      const btn = document.getElementById('at-scheme-btn');
+      if (!btn) return;
+      function getScheme() {{ try {{ return localStorage.getItem('at-scheme') || 'system'; }} catch(e) {{ return 'system'; }} }}
+      function setScheme(s) {{
+        try {{ localStorage.setItem('at-scheme', s); }} catch(e) {{}}
+        const pref = window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.scheme = s === 'system' ? pref : s;
+        updateBtn(s);
+      }}
+      function updateBtn(s) {{
+        btn.innerHTML = ICONS[s] || ICONS.system;
+        const labels = {{ light: 'Light mode', system: 'System mode', dark: 'Dark mode' }};
+        btn.title = labels[s] || 'Colour scheme';
+        btn.setAttribute('aria-label', btn.title);
+      }}
+      btn.addEventListener('click', () => {{
+        const order = ['light', 'system', 'dark'];
+        const cur = getScheme();
+        const next = order[(order.indexOf(cur) + 1) % order.length];
+        setScheme(next);
+      }});
+      if (window.matchMedia) {{
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', e => {{
+          if (getScheme() === 'system') document.documentElement.dataset.scheme = e.matches ? 'dark' : 'light';
+        }});
+      }}
+      updateBtn(getScheme());
+    }})();
+  </script>"""
+
+
 def render_shell_page(
     user: User,
     *,
@@ -1111,6 +1322,7 @@ def render_shell_page(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {_fouc_script()}
   <title>{escape(page_title)} - Application Tracker</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="shortcut icon" href="/favicon.ico">
@@ -1211,6 +1423,7 @@ def render_shell_page(
       }});
     }})();
   </script>
+  {_scheme_js()}
   {scripts}
 </body>
 </html>"""
@@ -1279,6 +1492,7 @@ def app_header(
       {goal_slot}
       <div class="topbar-actions" data-shell-actions="primary">
         {action_links}
+        <button id="at-scheme-btn" type="button" title="Colour scheme" aria-label="Toggle colour scheme"></button>
         <details class="user-menu">
           <summary class="shell-topbar-action" aria-label="User menu">
             <span class="avatar-mark">{escape(_initials(user.email))}</span>

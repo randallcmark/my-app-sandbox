@@ -337,6 +337,80 @@ def _admin_api_token_row(api_token: ApiToken) -> str:
     """
 
 
+def _appearance_js() -> str:
+    return """<script>
+  (() => {
+    const THEMES = [
+      { id: 'default', label: 'Default', accent: '#4F67E4' },
+      { id: 'ocean',   label: 'Ocean',   accent: '#0B9090' },
+      { id: 'forest',  label: 'Forest',  accent: '#2E7D46' },
+      { id: 'rose',    label: 'Rose',    accent: '#C0395D' },
+      { id: 'amber',   label: 'Amber',   accent: '#B06000' },
+      { id: 'slate',   label: 'Slate',   accent: '#3D5475' },
+      { id: 'violet',  label: 'Violet',  accent: '#7C4DDB' },
+      { id: 'custom',  label: 'Custom',  accent: null },
+    ];
+    function darken(hex, amt) {
+      var n = parseInt(hex.slice(1), 16);
+      var r = Math.max(0, (n >> 16) - amt);
+      var g = Math.max(0, ((n >> 8) & 0xff) - amt);
+      var b = Math.max(0, (n & 0xff) - amt);
+      return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+    }
+    function lighten(hex) {
+      var n = parseInt(hex.slice(1), 16);
+      var r = Math.min(255, Math.round(((n >> 16)) * 0.08 + 234));
+      var g = Math.min(255, Math.round((((n >> 8) & 0xff)) * 0.08 + 234));
+      var b = Math.min(255, Math.round(((n & 0xff)) * 0.08 + 234));
+      return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    }
+    function applyTheme(id, customColor) {
+      try { localStorage.setItem('at-theme', id); } catch(e) {}
+      delete document.documentElement.dataset.theme;
+      document.documentElement.style.removeProperty('--accent');
+      document.documentElement.style.removeProperty('--accent-strong');
+      document.documentElement.style.removeProperty('--accent-soft');
+      if (id === 'custom') {
+        var c = customColor || '#4F67E4';
+        try { localStorage.setItem('at-custom-accent', c); } catch(e) {}
+        document.documentElement.style.setProperty('--accent', c);
+        document.documentElement.style.setProperty('--accent-strong', darken(c, 40));
+        document.documentElement.style.setProperty('--accent-soft', lighten(c));
+      } else if (id !== 'default') {
+        document.documentElement.dataset.theme = id;
+      }
+    }
+    const container = document.getElementById('at-theme-swatches');
+    const customRow = document.getElementById('at-theme-custom-row');
+    const customInput = document.getElementById('at-theme-custom-color');
+    if (!container) return;
+    const current = (() => { try { return localStorage.getItem('at-theme') || 'default'; } catch(e) { return 'default'; } })();
+    const customAccent = (() => { try { return localStorage.getItem('at-custom-accent') || '#4F67E4'; } catch(e) { return '#4F67E4'; } })();
+    if (customInput) customInput.value = customAccent;
+    function updateActive(id) {
+      container.querySelectorAll('.theme-swatch').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === id);
+        btn.setAttribute('aria-pressed', btn.dataset.theme === id ? 'true' : 'false');
+      });
+      if (customRow) customRow.style.display = id === 'custom' ? 'flex' : 'none';
+    }
+    container.querySelectorAll('.theme-swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyTheme(btn.dataset.theme, customInput ? customInput.value : null);
+        updateActive(btn.dataset.theme);
+      });
+    });
+    if (customInput) {
+      customInput.addEventListener('input', () => {
+        var cur = (() => { try { return localStorage.getItem('at-theme') || 'default'; } catch(e) { return 'default'; } })();
+        if (cur === 'custom') applyTheme('custom', customInput.value);
+      });
+    }
+    updateActive(current);
+  })();
+</script>"""
+
+
 def settings_page(
     user: User,
     api_tokens: list[ApiToken],
@@ -465,8 +539,106 @@ def settings_page(
         -webkit-overflow-scrolling: touch;
       }
     }
+    /* ── Appearance section ─────────────────────────────── */
+    .theme-grid {
+      align-items: flex-start;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .theme-swatch {
+      align-items: center;
+      background: none;
+      border: 2px solid transparent;
+      border-radius: 14px;
+      color: inherit;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      font: inherit;
+      gap: 6px;
+      min-height: 0;
+      padding: 8px 10px;
+      transition: border-color 120ms ease-out;
+    }
+    .theme-swatch:hover { background: none; border-color: var(--line); }
+    .theme-swatch:hover:not(:disabled) { background: none; }
+    .theme-swatch.active { border-color: var(--accent); }
+    .theme-swatch.active:hover { background: none; }
+    .swatch-dot {
+      border: 1.5px solid rgba(0,0,0,0.10);
+      border-radius: 50%;
+      display: block;
+      height: 26px;
+      width: 26px;
+    }
+    .swatch-label {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-align: center;
+    }
+    .theme-custom-row {
+      align-items: center;
+      display: none;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .theme-custom-row label { color: var(--muted); font-size: 0.86rem; width: auto; }
+    .theme-custom-row input[type="color"] {
+      border: var(--border-default);
+      border-radius: 8px;
+      cursor: pointer;
+      height: 34px;
+      padding: 2px 3px;
+      width: 52px;
+    }
+    html[data-scheme="dark"] .swatch-dot { border-color: rgba(255,255,255,0.10); }
     """
     body = f"""
+    <section id="appearance">
+      <h2>Appearance</h2>
+      <p>Choose a colour theme. Changes take effect immediately and are saved in your browser.</p>
+      <div class="theme-grid" id="at-theme-swatches" role="group" aria-label="Choose colour theme">
+        <button class="theme-swatch" type="button" data-theme="default" aria-pressed="false">
+          <span class="swatch-dot" style="background:#4F67E4"></span>
+          <span class="swatch-label">Default</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="ocean" aria-pressed="false">
+          <span class="swatch-dot" style="background:#0B9090"></span>
+          <span class="swatch-label">Ocean</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="forest" aria-pressed="false">
+          <span class="swatch-dot" style="background:#2E7D46"></span>
+          <span class="swatch-label">Forest</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="rose" aria-pressed="false">
+          <span class="swatch-dot" style="background:#C0395D"></span>
+          <span class="swatch-label">Rose</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="amber" aria-pressed="false">
+          <span class="swatch-dot" style="background:#B06000"></span>
+          <span class="swatch-label">Amber</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="slate" aria-pressed="false">
+          <span class="swatch-dot" style="background:#3D5475"></span>
+          <span class="swatch-label">Slate</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="violet" aria-pressed="false">
+          <span class="swatch-dot" style="background:#7C4DDB"></span>
+          <span class="swatch-label">Violet</span>
+        </button>
+        <button class="theme-swatch" type="button" data-theme="custom" aria-pressed="false">
+          <span class="swatch-dot" style="background:conic-gradient(#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#c77dff,#ff6b6b)"></span>
+          <span class="swatch-label">Custom</span>
+        </button>
+      </div>
+      <div class="theme-custom-row" id="at-theme-custom-row">
+        <label for="at-theme-custom-color">Accent colour</label>
+        <input type="color" id="at-theme-custom-color" value="#4F67E4">
+      </div>
+    </section>
     {new_token_block}
     <section id="profile">
       <h2>Job-search profile</h2>
@@ -596,6 +768,7 @@ def settings_page(
             body=body,
             container="standard",
             extra_styles=extra_styles,
+            scripts=_appearance_js(),
         )
     )
 
