@@ -946,6 +946,7 @@ def render_email_capture_form(user: User, *, error: str | None = None) -> HTMLRe
       padding: 8px 10px;
     }
     .error { color: var(--warn); }
+    .page-panel { overflow: visible; }
     """
     body = f"""
     <section class="page-panel">
